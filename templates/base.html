@@ -10,63 +10,55 @@
 
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
-    <style>
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-      }
-      
-      body {
-        display: flex;
-        flex-direction: column;
-      }
-      
-      main {
-        flex-grow: 1;
-      }
-      
-      @media (max-width: 767.98px) {
-        main {
-          padding-bottom: 4.5rem; /* make room for bottom navbar */
-        }
-      }
-    </style>
   </head>
   <body>
+    {% load static %}
     <div class="d-flex">
-      <!-- Desktop Sidebar -->
+      <!-- Sidebar (desktop) -->
       <div class="d-none d-md-flex flex-column flex-shrink-0 p-3 text-white min-vh-100" style="width: 200px; background-color: #272b3e;">
+        <a href="/" class="d-flex text-white text-decoration-none m-2">
+          <img src="{% static 'img/logo3.svg' %}" alt="Logo" width="64" height="64" />
+          My<br />Household
+        </a>
+        <hr />
         <ul class="nav nav-pills flex-column mb-auto">
           <li>
-            <a href="#" class="nav-link text-white">
-              <i class="bi bi-speedometer2 me-2"></i>
-              Dashboard
+            <a href="{% url 'upkeep-list' %}" class="nav-link text-white">
+              <i class="bi bi-tools me-2"></i>
+              Maintenance
             </a>
           </li>
           <li>
-            <a href="{% url 'upkeep-list' %}" class="nav-link text-white">
-              <i class="bi bi-ui-checks me-2"></i>
-              Upkeep
+            <a href="{% url 'item-list' %}" class="nav-link text-white">
+              <i class="bi bi-clipboard-data me-2"></i>
+              Inventory
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'location-list' %}" class="nav-link text-white">
+              <i class="bi bi-geo-alt me-2"></i>
+              Locations
             </a>
           </li>
         </ul>
       </div>
 
-      <!-- Page Content Wrapper -->
+      <!-- Page Content -->
       <div class="d-flex flex-column flex-grow-1 min-vh-100">
-        <!-- Top Bar (desktop only) -->
-        <nav class="navbar px-3 d-none d-md-flex" style="background-color: #f5f8fa;">
+        <!-- Top Bar -->
+        <nav class="navbar px-3 d-flex align-items-center" style="background-color: #f5f8fa;">
+          <!-- Mobile Hamburger -->
+          <button class="btn d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar"><i class="bi bi-list" style="font-size: 1.5rem;"></i></button>
+          <!-- Page Title -->
           <div class="navbar-brand mb-0 h1">{{ title }}</div>
-          <div class="ms-auto dropdown">
+
+          <!-- Profile dropdown (desktop) -->
+          <div class="ms-auto dropdown d-none d-md-block">
             <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="dropdownUserTop" data-bs-toggle="dropdown" aria-expanded="false">
               <i class="bi bi-person-circle me-2 px-2" style="font-size: 1.3rem;"></i>
               <strong>{{ user.username }}</strong>
             </a>
             <ul class="dropdown-menu dropdown-menu-end text-small shadow" aria-labelledby="dropdownUserTop">
-              <li>
-                <a class="dropdown-item" href="#">Settings</a>
-              </li>
               <li>
                 <a class="dropdown-item" href="#">Profile</a>
               </li>
@@ -74,7 +66,7 @@
                 <hr class="dropdown-divider" />
               </li>
               <li>
-                <a class="dropdown-item" href="#">Sign out</a>
+                <a class="dropdown-item" href="#">Log out</a>
               </li>
             </ul>
           </div>
@@ -94,35 +86,63 @@
         <!-- Main content area -->
         <main class="flex-grow-1 p-3 pb-5" style="background-color: #f5f8fa;">
           {% block content %}
-            <!-- Page-specific content goes here -->
+
           {% endblock %}
         </main>
       </div>
     </div>
 
-    <!-- Bottom Navbar for Mobile & Tablet -->
-    <nav class="d-md-none bg-white border-top fixed-bottom">
-      <div class="d-flex justify-content-around py-2">
-        <a href="/" class="text-dark text-center"><i class="bi bi-house-gear" style="font-size: 1.4rem;"></i></a>
-        <a href="#" class="text-dark text-center"><i class="bi bi-speedometer2" style="font-size: 1.4rem;"></i></a>
-        <a href="{% url 'upkeep-list' %}" class="text-dark text-center"><i class="bi bi-ui-checks" style="font-size: 1.4rem;"></i></a>
-        <a href="#" class="text-dark text-center dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-person-circle" style="font-size: 1.4rem;"></i></a>
-        <ul class="dropdown-menu dropdown-menu-end text-small shadow">
+    <!-- Mobile Sidebar (Offcanvas) -->
+    <div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="mobileSidebarLabel">MyHousehold</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body p-3 d-flex flex-column h-100">
+        <ul class="nav nav-pills flex-column mb-4">
           <li>
-            <a class="dropdown-item" href="#">Settings</a>
+            <a href="{% url 'upkeep-list' %}" class="nav-link text-white">
+              <i class="bi bi-tools me-2"></i>
+              Maintenance
+            </a>
           </li>
           <li>
-            <a class="dropdown-item" href="#">Profile</a>
+            <a href="{% url 'item-list' %}" class="nav-link text-white">
+              <i class="bi bi-clipboard-data me-2"></i>
+              Inventory
+            </a>
           </li>
           <li>
-            <hr class="dropdown-divider" />
-          </li>
-          <li>
-            <a class="dropdown-item" href="#">Sign out</a>
+            <a href="{% url 'location-list' %}" class="nav-link text-white">
+              <i class="bi bi-geo-alt me-2"></i>
+              Locations
+            </a>
           </li>
         </ul>
+
+        <!-- Profile menu (bottom of sidebar) -->
+        <div class="mt-auto">
+          <hr />
+          <div class="dropdown">
+            <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="mobileUserDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-person-circle me-2" style="font-size: 1.3rem;"></i>
+              <strong>{{ user.username }}</strong>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="mobileUserDropdown">
+              <li>
+                <a class="dropdown-item" href="#">Profile</a>
+              </li>
+              <li>
+                <hr class="dropdown-divider" />
+              </li>
+              <li>
+                <a class="dropdown-item" href="#">Log out</a>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
-    </nav>
+    </div>
 
     <!-- Bootstrap Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
