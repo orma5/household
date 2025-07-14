@@ -1,70 +1,10 @@
 from django.db.models import Count, Q, Prefetch
-from django.urls import reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
-from datetime import date
 from django.utils import timezone
 from .models import Task, Item, Location
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
-from .forms import TaskForm, ItemForm
-
-
-from datetime import date
-from django.db.models import Count, Q, Prefetch
-from django.utils import timezone
-
-
-class ItemListView(ListView):
-    model = Item
-    template_name = "items/item_list.html"
-    context_object_name = "items"
-
-
-class ItemCreateView(CreateView):
-    model = Item
-    fields = ["name", "purchase_year", "location", "sub_location", "initial_value"]
-    template_name = "items/item_form.html"
-    success_url = reverse_lazy("item-list")
-
-
-class ItemUpdateView(UpdateView):
-    model = Item
-    fields = ["name", "purchase_year", "location", "sub_location", "initial_value"]
-    template_name = "items/item_form.html"
-    success_url = reverse_lazy("item-list")
-
-
-class ItemDeleteView(DeleteView):
-    model = Item
-    template_name = "items/item_confirm_delete.html"
-    success_url = reverse_lazy("item-list")
-
-
-class LocationListView(ListView):
-    model = Location
-    template_name = "locations/location_list.html"
-    context_object_name = "locations"
-
-
-class LocationCreateView(CreateView):
-    model = Location
-    fields = ["name", "address", "zip_code", "city", "country_code"]
-    template_name = "locations/location_form.html"
-    success_url = reverse_lazy("location-list")
-
-
-class LocationUpdateView(UpdateView):
-    model = Location
-    fields = ["name", "address", "zip_code", "city", "country_code"]
-    template_name = "locations/location_form.html"
-    success_url = reverse_lazy("location-list")
-
-
-class LocationDeleteView(DeleteView):
-    model = Location
-    template_name = "locations/location_confirm_delete.html"
-    success_url = reverse_lazy("location-list")
+from .forms import TaskForm
 
 
 def upkeep_view(request):
@@ -168,7 +108,6 @@ def create_task(request):
     task_form = TaskForm(request.POST)
     new_item_name = request.POST.get("new_item_name")
     location_id = request.POST.get("location")
-    item_id = request.POST.get("item")
     # If user entered a new item name, create it
     if new_item_name:
         item = Item.objects.create(name=new_item_name, location_id=location_id)
