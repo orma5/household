@@ -4,16 +4,6 @@ from common.models import BaseModel
 from django.core.validators import MaxValueValidator, MinValueValidator
 
 
-class Frequency(models.IntegerChoices):
-    DAILY = 1, "Daily"
-    WEEKLY = 7, "Weekly"
-    BI_WEEKLY = 14, "Bi-weekly"
-    MONTHLY = 30, "Monthly"
-    BI_MONTHLY = 60, "Bi-monthly"
-    QUARTERLY = 90, "Quarterly"
-    YEARLY = 365, "Yearly"
-
-
 class Location(BaseModel):
     name = models.CharField(max_length=255)
     address = models.CharField(max_length=255, blank=True, null=True)
@@ -52,6 +42,15 @@ class Item(BaseModel):
 
 
 class Task(BaseModel):
+    class Frequency(models.IntegerChoices):
+        DAILY = 1, "Daily"
+        WEEKLY = 7, "Weekly"
+        BI_WEEKLY = 14, "Bi-weekly"
+        MONTHLY = 30, "Monthly"
+        BI_MONTHLY = 60, "Bi-monthly"
+        QUARTERLY = 90, "Quarterly"
+        YEARLY = 365, "Yearly"
+
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     description_url = models.URLField(blank=True, null=True)
