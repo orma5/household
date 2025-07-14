@@ -1,4 +1,5 @@
 name: Docker build and push
+
 on: [push]
 
 jobs:
@@ -24,6 +25,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-     - name: Trigger Portainer webhook
+      - name: Trigger Portainer webhook
         run: |
           curl -X POST "${{ secrets.PORTAINER_HOME_WEBHOOK }}"
