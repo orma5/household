@@ -30,18 +30,19 @@ class Location(BaseModel):
 
 class Item(BaseModel):
     name = models.CharField(max_length=255)
+    location = models.ForeignKey(
+        Location, null=True, on_delete=models.SET_NULL, related_name="items"
+    )
+    sub_location = models.CharField(max_length=30, blank=True, null=True)
     purchase_year = models.PositiveIntegerField(
         null=True,
+        blank=True,
         validators=[
             MinValueValidator(1900),
             MaxValueValidator(datetime.datetime.now().year + 1),
         ],
     )
-    location = models.ForeignKey(
-        Location, null=True, on_delete=models.SET_NULL, related_name="items"
-    )
-    sub_location = models.CharField(max_length=30, blank=True, null=True)
-    initial_value = models.PositiveIntegerField(null=True)
+    initial_value = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         verbose_name_plural = "Items"
