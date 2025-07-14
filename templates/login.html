@@ -1,0 +1,58 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Login</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  </head>
+  <body style="margin: 0; padding: 0;">
+    <div class="d-flex vh-100">
+      <!-- Background Image Section -->
+      <!-- Background Image Section: hidden on mobile, shown on md+ -->
+      <div class="d-none d-md-block" style="flex: 2; background-image: url('{% static 'img/login-bg.png' %}'); background-size: cover; background-position: center;"></div>
+
+      <!-- Login Form Section -->
+      <!-- Right container fills height -->
+      <div class="d-flex flex-column vh-100" style="flex: 1;">
+        <!-- Form fills entire height and width -->
+        <form method="post" class="card p-5 d-flex flex-column justify-content-center flex-grow-1 w-100">
+          {% csrf_token %}
+          {% if form.errors %}
+            <div class="alert alert-danger text-center">
+              {% if form.non_field_errors %}
+                <ul class="errorlist nonfield">
+                  {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p>Something went wrong when trying to login</p>
+              {% endif %}
+            </div>
+          {% endif %}
+          <h3 class="mt-4 mb-5 fw-bold text-dark text-center">Keep App Login</h3>
+          <div class="mb-5 d-flex justify-content-center align-items-center rounded-circle bg-primary mx-auto" style="width: 60px; height: 60px;">
+            <i class="bi bi-lock text-white fs-4"></i>
+          </div>
+          <div class="mb-3 w-100">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" name="username" required />
+          </div>
+          <div class="mb-5 w-100">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" name="password" required />
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Login</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
