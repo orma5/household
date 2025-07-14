@@ -1,9 +1,33 @@
+from collections import defaultdict
 from django.db.models import Count, Q, Prefetch
 from django.utils import timezone
 from .models import Task, Item, Location
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
 
 
+@login_required
+def item_detail(request, pk):
+    item = get_object_or_404(Item, pk=pk)
+    return render(request, "item_detail_modal.html", {"item": item})
+
+
+@login_required
+def item_list(request):
+    items = Item.objects.select_related("location").order_by("location__name", "name")
+
+    grouped_items = defaultdict(list)
+    for item in items:
+        loc_name = item.location.name if item.location else "No location"
+        grouped_items[loc_name].append(item)
+
+    context = {
+        "grouped_items": grouped_items.items(),  # convert to list of tuples
+    }
+    return render(request, "item_list.html", context)
+
+
+@login_required
 def maintenance_list(request):
     today = timezone.now().date()
     start_of_month = today.replace(day=1)
