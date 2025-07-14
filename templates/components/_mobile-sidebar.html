@@ -44,10 +44,13 @@
 
         <!-- Log out -->
         <div class="mt-auto w-100">
-          <a href="#" class="nav-link text-dark d-flex flex-column align-items-center">
-            <i class="bi bi-box-arrow-left fs-5"></i>
-            <span class="mt-1">Log out</span>
-          </a>
+          <form method="post" class="d-flex flex-column" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-link text-dark text-decoration-none d-flex flex-column align-items-center">
+              <i class="bi bi-box-arrow-left fs-5"></i>
+              <span class="mt-1">Log out</span>
+            </button>
+          </form>
         </div>
       </div>
     </div>
