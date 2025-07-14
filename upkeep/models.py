@@ -50,10 +50,6 @@ class Item(BaseModel):
     def __str__(self):
         return self.name
 
-    def calculate_next_due_date(self):
-        if self.last_performed and self.frequency:
-            return self.last_performed + datetime.timedelta(days=self.frequency)
-
 
 class Task(BaseModel):
     name = models.CharField(max_length=255)
@@ -70,3 +66,13 @@ class Task(BaseModel):
 
     def __str__(self):
         return f"{self.name} ({self.item.name})"
+
+    def calculate_next_due_date(self):
+        if self.last_performed and self.frequency:
+            return self.last_performed + datetime.timedelta(days=self.frequency)
+        if not self.last_performed:
+            return datetime.date.today()
+
+    def save(self, *args, **kwargs):
+        self.next_due_date = self.calculate_next_due_date()
+        super().save(*args, **kwargs)
