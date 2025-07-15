@@ -1,7 +1,9 @@
 {% extends 'base.html' %}
+
 {% block page_title %}
   Item Inventory
 {% endblock %}
+
 {% block content %}
   <div class="container mt-4">
     {% for location, items in grouped_items %}
@@ -9,38 +11,19 @@
       <div class="row mb-4">
         {% for item in items %}
           <div class="col-12 col-sm-6 col-lg-4 mb-3">
-            <div class="card shadow-sm rounded-3 h-100" role="button" hx-get="{% url 'item_detail' item.id %}" hx-target="#itemDetailModal .modal-content" hx-trigger="click" hx-on="htmx:afterSwap: bootstrap.Modal.getOrCreateInstance(document.getElementById('itemDetailModal')).show()">
+            <div class="card shadow-sm rounded-3 h-100" role="button" data-bs-toggle="modal" data-bs-target="#itemDetailModal{{ item.id }}">
               <div class="card-body">
                 <h5 class="card-title mb-0">{{ item.name }}</h5>
               </div>
             </div>
           </div>
+
+          <!-- Modal for this item -->
+          {% include 'components/item_detail_modal.html' with item=item %}
         {% endfor %}
       </div>
     {% empty %}
       <div class="alert alert-info text-center">No items found.</div>
     {% endfor %}
-
-    <!-- Modal container moved OUTSIDE the loops -->
-    <div class="modal fade" id="itemDetailModal" tabindex="-1" aria-labelledby="itemDetailModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content" hx-target="this" hx-swap="innerHTML"></div>
-      </div>
-    </div>
   </div>
-{% endblock %}
-
-{% block extra_scripts %}
-  <script>
-    document.body.addEventListener('htmx:afterSwap', (event) => {
-      // Check if the swap replaced content inside the modal container
-      if (event.target.closest('#itemDetailModal')) {
-        const modalEl = document.getElementById('itemDetailModal')
-        if (modalEl) {
-          const modal = bootstrap.Modal.getOrCreateInstance(modalEl)
-          modal.show()
-        }
-      }
-    })
-  </script>
 {% endblock %}
