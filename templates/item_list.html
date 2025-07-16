@@ -6,6 +6,12 @@
 
 {% block content %}
   <div class="container mt-4">
+    <!-- Desktop add button -->
+    <div class="d-none d-md-flex justify-content-end mb-3">
+      <a href="#" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Add Item</a>
+    </div>
+
+    <!-- Item list -->
     {% for location, items in grouped_items %}
       <h5 class="text-secondary mb-3">{{ location }}</h5>
       <div class="row mb-4">
@@ -19,11 +25,13 @@
           </div>
 
           <!-- Modal for this item -->
-          {% include 'components/item_detail_modal.html' with item=item %}
+          {% include 'components/_item_detail_modal.html' with item=item %}
         {% endfor %}
       </div>
     {% empty %}
       <div class="alert alert-info text-center">No items found.</div>
     {% endfor %}
+    <!-- Floating Action Button -->
+    <a href="#" class="btn btn-primary rounded-circle shadow-lg position-fixed d-md-none" style="bottom: 20px; right: 20px; width: 56px; height: 56px; z-index: 1050;" title="Add Item"><i class="bi bi-plus-lg fs-4 d-flex justify-content-center align-items-center h-100 w-100"></i></a>
   </div>
 {% endblock %}

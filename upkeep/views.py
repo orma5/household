@@ -2,14 +2,8 @@ from collections import defaultdict
 from django.db.models import Count, Q, Prefetch
 from django.utils import timezone
 from .models import Task, Item, Location
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-
-
-@login_required
-def item_detail(request, pk):
-    item = get_object_or_404(Item, pk=pk)
-    return render(request, "item_detail_modal.html", {"item": item})
 
 
 @login_required
