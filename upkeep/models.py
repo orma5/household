@@ -68,10 +68,10 @@ class Item(BaseModel):
 
     def get_status_badge_class(self):
         return {
-            self.ItemStatus.ACTIVE: "success",
-            self.ItemStatus.RETIRED: "warning",
-            self.ItemStatus.BROKEN: "danger",
-        }.get(self.status, "secondary")
+            self.ItemStatus.ACTIVE: "status-active",
+            self.ItemStatus.RETIRED: "status-retired",
+            self.ItemStatus.BROKEN: "status-broken",
+        }.get(self.status, "status-active")
 
     def get_status_display_name(self):
         return self.ItemStatus(self.status).label

@@ -1,46 +1,47 @@
 {% extends 'base.html' %}
 
-{% block page_title %}
-  Item Inventory
-{% endblock %}
+{% with page_title='Item Inventory' %}
+  {% block content %}
+    <div class="container mt-4">
+      <!-- Desktop add button -->
+      <div class="d-none d-md-flex justify-content-end mb-3">
+        <a href="#" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Add Item</a>
+      </div>
 
-{% block content %}
-  <div class="container mt-4">
-    <!-- Desktop add button -->
-    <div class="d-none d-md-flex justify-content-end mb-3">
-      <a href="#" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Add Item</a>
-    </div>
-
-    <!-- Item list -->
-    {% for location, items in grouped_items %}
-      <h5 class="text-secondary mb-3">{{ location }}</h5>
-      <div class="row mb-4">
-        {% for item in items %}
-          <div class="col-12 col-sm-6 col-lg-4 mb-3">
-            <div class="card shadow-sm rounded-3 h-100" role="button" data-bs-toggle="modal" data-bs-target="#itemDetailModal{{ item.id }}">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                  <h5 class="card-title mb-0">{{ item.name }}</h5>
-                  <span class="badge bg-{{ item.get_status_badge_class }}">{{ item.get_status_display_name }}</span>
+      <!-- Item list -->
+      {% for location, items in grouped_items %}
+        <h5 class="text-secondary mb-3">{{ location }}</h5>
+        <div class="row mb-4">
+          {% for item in items %}
+            <div class="col-12 col-sm-6 col-lg-4 mb-3">
+              <div class="card shadow-sm rounded-3 h-100" role="button" data-bs-toggle="modal" data-bs-target="#itemDetailModal{{ item.id }}">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <h5 class="card-title mb-0">{{ item.name }}</h5>
+                    {% if item.area %}
+                      <p>{{ item.area }}</p>
+                    {% endif %}
+                    <span class="badge text-dark badge-{{ item.get_status_badge_class }}">{{ item.get_status_display_name }}</span>
+                  </div>
+                  {% if item.quantity > 1 %}
+                    <span class="badge badge-quantity text-dark mt-2"><i class="bi bi-stack"></i> {{ item.quantity }}</span>
+                  {% endif %}
+                  {% if item.brand %}
+                    <span class="badge badge-brand text-dark mt-2"><i class="bi bi-globe"></i> {{ item.brand }}</span>
+                  {% endif %}
                 </div>
-                {% if item.quantity > 1 %}
-                  <span class="badge bg-primary mt-2"><i class="bi bi-stack"></i> {{ item.quantity }}</span>
-                {% endif %}
-                {% if item.brand %}
-                  <span class="badge bg-secondary mt-2"><i class="bi bi-tags"></i> {{ item.brand }}</span>
-                {% endif %}
               </div>
             </div>
-          </div>
 
-          <!-- Modal for this item -->
-          {% include 'components/_item_detail_modal.html' with item=item %}
-        {% endfor %}
-      </div>
-    {% empty %}
-      <div class="alert alert-info text-center">No items found.</div>
-    {% endfor %}
-    <!-- Floating Action Button -->
-    <a href="#" class="btn btn-primary rounded-circle shadow-lg position-fixed d-md-none" style="bottom: 20px; right: 20px; width: 56px; height: 56px; z-index: 1050;" title="Add Item"><i class="bi bi-plus-lg fs-4 d-flex justify-content-center align-items-center h-100 w-100"></i></a>
-  </div>
-{% endblock %}
+            <!-- Modal for this item -->
+            {% include 'components/_item_detail_modal.html' with item=item %}
+          {% endfor %}
+        </div>
+      {% empty %}
+        <div class="alert alert-info text-center">No items found.</div>
+      {% endfor %}
+      <!-- Floating Action Button -->
+      <a href="#" class="btn btn-primary rounded-circle shadow-lg position-fixed d-md-none" style="bottom: 20px; right: 20px; width: 56px; height: 56px; z-index: 1050;" title="Add Item"><i class="bi bi-plus-lg fs-4 d-flex justify-content-center align-items-center h-100 w-100"></i></a>
+    </div>
+  {% endblock %}
+{% endwith %}

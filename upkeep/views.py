@@ -16,7 +16,7 @@ def item_list(request):
         grouped_items[loc_name].append(item)
 
     context = {
-        "grouped_items": grouped_items.items(),  # convert to list of tuples
+        "grouped_items": grouped_items.items(),
     }
     return render(request, "item_list.html", context)
 

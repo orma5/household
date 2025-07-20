@@ -1,0 +1,33 @@
+:root {
+  --purple-color: #BCB6FF;
+  --blue-color: #b8e1ff;
+  --turquise-color: #a9fff7;
+  --green-color: #94fbab;
+  --greenblue-color: #82aba1;
+  --red-color: #ec625d;
+}
+
+.badge-status-active {
+  background-color: var(--green-color);
+  color: white;
+}
+
+.badge-status-retired {
+  background-color: var(--greenblue-color);
+  color: black;
+}
+
+.badge-status-broken {
+  background-color: var(--red-color);
+  color: white;
+}
+
+.badge-quantity {
+  background-color: var(--blue-color);
+  color: white;
+}
+
+.badge-brand {
+  background-color: var(--turquise-color);
+  color: white;
+}
