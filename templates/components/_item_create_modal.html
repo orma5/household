@@ -1,0 +1,28 @@
+<!-- _item_create_modal.html -->
+<div class="modal fade" id="itemCreateModal" tabindex="-1" aria-labelledby="itemCreateModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'item-create' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="itemCreateModalLabel">Add New Item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Form fields go here -->
+          {% if form %}
+            {{ form.as_p }}
+          {% else %}
+            <div class="alert alert-warning">Form not available.</div>
+          {% endif %}
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Create</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

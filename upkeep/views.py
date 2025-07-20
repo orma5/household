@@ -2,13 +2,31 @@ from collections import defaultdict
 from django.db.models import Count, Q, Prefetch
 from django.utils import timezone
 from .models import Task, Item, Location
-from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from .forms import ItemForm
+from django.shortcuts import render, redirect
+
+
+@login_required
+def item_create(request):
+    if request.method == "POST":
+        form = ItemForm(request.POST, request.FILES)
+        if form.is_valid():
+            item = form.save(commit=False)
+            item.status = Item.ItemStatus.ACTIVE  # Set default status manually
+            item.save()
+            return redirect("item-list")  # Replace with your actual list view name
+    else:
+        form = ItemForm()
+
+    # Optional: this view can render a standalone page or return a partial if needed
+    return render(request, "inventory/item_create.html", {"form": form})
 
 
 @login_required
 def item_list(request):
     items = Item.objects.select_related("location").order_by("location__name", "name")
+    form = ItemForm()
 
     grouped_items = defaultdict(list)
     for item in items:
@@ -17,6 +35,7 @@ def item_list(request):
 
     context = {
         "grouped_items": grouped_items.items(),
+        "form": form,
     }
     return render(request, "item_list.html", context)
 
