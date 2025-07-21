@@ -28,6 +28,14 @@
     {% endblock %}
   </head>
   <body>
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100">
+      <div id="toast-message" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body">Item deleted successfully.</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>
+    </div>
     <div class="d-flex">
       <!-- Sidebar -->
       <div class="d-none d-sm-flex">
@@ -61,6 +69,14 @@
 
         <!-- Main Content Area -->
         <div class="flex-grow-1 p-4" style="background-color: #efefef;">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
           {% block content %}
 
           {% endblock %}

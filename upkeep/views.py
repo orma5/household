@@ -3,8 +3,20 @@ from django.db.models import Count, Q, Prefetch
 from django.utils import timezone
 from .models import Task, Item, Location
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, render, redirect
+from django.contrib import messages
 from .forms import ItemForm
-from django.shortcuts import render, redirect
+
+
+@login_required
+def item_delete(request, pk):
+    item = get_object_or_404(Item, pk=pk)
+
+    if request.method == "POST":
+        item_name = item.name
+        item.delete()
+        messages.success(request, f"Item '{item_name}' was deleted successfully.")
+        return redirect("item-list")
 
 
 @login_required
@@ -13,9 +25,19 @@ def item_create(request):
         form = ItemForm(request.POST, request.FILES)
         if form.is_valid():
             item = form.save(commit=False)
-            item.status = Item.ItemStatus.ACTIVE  # Set default status manually
+            # All new items should have status ACTIVE
+            item.status = Item.ItemStatus.ACTIVE
             item.save()
-            return redirect("item-list")  # Replace with your actual list view name
+            messages.success(
+                request,
+                f"Item: {item.name} in location: {item.location.name} created successfully.",
+            )
+            return redirect("item-list")
+        else:
+            messages.error(
+                request,
+                "There was a problem creating the item. Please check the form for errors.",
+            )
     else:
         form = ItemForm()
 
