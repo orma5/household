@@ -9,6 +9,24 @@ from .forms import ItemForm
 
 
 @login_required
+def item_update(request, pk):
+    item = get_object_or_404(Item, pk=pk)
+
+    if request.method == "POST":
+        form = ItemForm(request.POST, request.FILES, instance=item)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"{item.name} was updated successfully.")
+            return redirect("item-list")  # or wherever the item list is shown
+    else:
+        form = ItemForm(instance=item)
+
+    return render(
+        request, "components/item_detail_modal.html", {"item": item, "form": form}
+    )
+
+
+@login_required
 def item_delete(request, pk):
     item = get_object_or_404(Item, pk=pk)
 
@@ -48,7 +66,9 @@ def item_create(request):
 @login_required
 def item_list(request):
     items = Item.objects.select_related("location").order_by("location__name", "name")
-    form = ItemForm()
+
+    for item in items:
+        item.form = ItemForm(instance=item)  # Attach form directly
 
     grouped_items = defaultdict(list)
     for item in items:
@@ -57,7 +77,6 @@ def item_list(request):
 
     context = {
         "grouped_items": grouped_items.items(),
-        "form": form,
     }
     return render(request, "item_list.html", context)
 

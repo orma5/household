@@ -33,7 +33,7 @@
               </div>
             </div>
             <!-- Modal for this item -->
-            {% include 'components/_item_detail_modal.html' with item=item %}
+            {% include 'components/_item_detail_modal.html' with item=item form=item.form %}
           {% endfor %}
         </div>
       {% empty %}
