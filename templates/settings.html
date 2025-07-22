@@ -9,7 +9,7 @@
       <div class="mb-5">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h4 class="mb-0">Locations</h4>
-          <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createLocationModal"><i class="bi bi-plus-lg me-1"></i> Add Location</a>
+          <a href="#" class="btn btn-green" data-bs-toggle="modal" data-bs-target="#createLocationModal"><i class="bi bi-plus-lg me-1"></i> Add Location</a>
         </div>
 
         <div class="row">
@@ -32,9 +32,9 @@
                       {% endif %}
                     </div>
                     <div class="d-flex flex-column align-items-end gap-2">
-                      <a href="#" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editLocationModal{{ location.id }}"><i class="bi bi-pencil"></i></a>
+                      <a href="#" class="btn btn-sm btn-blue" data-bs-toggle="modal" data-bs-target="#editLocationModal{{ location.id }}"><i class="bi bi-pencil"></i></a>
                       {% if not location.default %}
-                        <button type="button" class="btn btn-sm btn-outline-danger" title="Delete location" data-bs-toggle="modal" data-bs-target="#confirmDeleteLocationModal{{ location.id }}"><i class="bi bi-trash"></i></button>
+                        <button type="button" class="btn btn-sm btn-red" title="Delete location" data-bs-toggle="modal" data-bs-target="#confirmDeleteLocationModal{{ location.id }}"><i class="bi bi-trash"></i></button>
                       {% endif %}
                     </div>
                   </div>

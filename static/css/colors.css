@@ -1,13 +1,24 @@
 :root {
   --purple-color: #BCB6FF;
+  --purple-hover: #a69aff;
+
   --blue-color: #b8e1ff;
+  --blue-hover: #9dd4f7;
+
   --turquise-color: #a9fff7;
+  --turquise-hover: #87f0e3;
+
   --green-color: #94fbab;
+  --green-hover: #78e89a;
+
   --greenblue-color: #82aba1;
+  --greenblue-hover: #6f998f;
+
   --red-color: #ec625d;
+  --red-hover: #d65450;
 }
 
-.badge-status-active .card-border-primary {
+.badge-status-active {
   background-color: var(--green-color);
   color: white;
 }
@@ -35,4 +46,108 @@
 .badge-default-location {
   background-color: var(--purple-color);
   color: black;
+}
+
+.btn-purple {
+  color: #fff;
+  background-color: var(--purple-color);
+  border-color: var(--purple-color);
+}
+.btn-purple:hover,
+.btn-purple:focus {
+  background-color: var(--purple-hover);
+  border-color: var(--purple-hover);
+  color: #fff;
+}
+.btn-purple:disabled {
+  background-color: var(--purple-color);
+  border-color: var(--purple-color);
+  opacity: 0.65;
+}
+
+/* Blue */
+.btn-blue {
+  color: #000;
+  background-color: var(--blue-color);
+  border-color: var(--blue-color);
+}
+.btn-blue:hover,
+.btn-blue:focus {
+  background-color: var(--blue-hover);
+  border-color: var(--blue-hover);
+  color: #000;
+}
+.btn-blue:disabled {
+  background-color: var(--blue-color);
+  border-color: var(--blue-color);
+  opacity: 0.65;
+}
+
+/* Turquise */
+.btn-turquise {
+  color: #000;
+  background-color: var(--turquise-color);
+  border-color: var(--turquise-color);
+}
+.btn-turquise:hover,
+.btn-turquise:focus {
+  background-color: var(--turquise-hover);
+  border-color: var(--turquise-hover);
+}
+.btn-turquise:disabled {
+  background-color: var(--turquise-color);
+  border-color: var(--turquise-color);
+  opacity: 0.65;
+}
+
+/* Green */
+.btn-green {
+  color: #000;
+  background-color: var(--green-color);
+  border-color: var(--green-color);
+}
+.btn-green:hover,
+.btn-green:focus {
+  background-color: var(--green-hover);
+  border-color: var(--green-hover);
+}
+.btn-green:disabled {
+  background-color: var(--green-color);
+  border-color: var(--green-color);
+  opacity: 0.65;
+}
+
+/* Greenblue */
+.btn-greenblue {
+  color: #fff;
+  background-color: var(--greenblue-color);
+  border-color: var(--greenblue-color);
+}
+.btn-greenblue:hover,
+.btn-greenblue:focus {
+  background-color: var(--greenblue-hover);
+  border-color: var(--greenblue-hover);
+}
+.btn-greenblue:disabled {
+  background-color: var(--greenblue-color);
+  border-color: var(--greenblue-color);
+  opacity: 0.65;
+}
+
+/* 🔴 Red */
+.btn-red {
+  color: #fff;
+  background-color: var(--red-color);
+  border-color: var(--red-color);
+}
+.btn-red:hover,
+.btn-red:focus {
+  background-color: var(--red-hover);
+  border-color: var(--red-hover);
+  color: #fff;
+}
+.btn-red:disabled {
+  background-color: var(--red-color);
+  border-color: var(--red-color);
+  opacity: 0.65;
 }
