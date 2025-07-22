@@ -2,6 +2,7 @@ import datetime
 from django.db import models
 from common.models import BaseModel
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.conf import settings
 
 
 class Location(BaseModel):
@@ -10,6 +11,9 @@ class Location(BaseModel):
     zip_code = models.CharField(max_length=10, blank=True, null=True)
     city = models.CharField(max_length=30, blank=True, null=True)
     country_code = models.CharField(max_length=2, blank=True, null=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="locations"
+    )
 
     class Meta:
         verbose_name_plural = "Locations"
@@ -56,6 +60,9 @@ class Item(BaseModel):
     manufacturer_manual_url = models.URLField(null=True, blank=True)
 
     end_of_service_date = models.DateField(blank=True, null=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="items"
+    )
 
     class Meta:
         verbose_name_plural = "Items"

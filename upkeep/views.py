@@ -10,7 +10,7 @@ from .forms import ItemForm
 
 @login_required
 def item_archive(request, pk):
-    item = get_object_or_404(Item, pk=pk)
+    item = get_object_or_404(Item, pk=pk, user=request.user)
     if request.method == "POST":
         item.status = Item.ItemStatus.RETIRED
         item.save()
@@ -20,7 +20,7 @@ def item_archive(request, pk):
 
 @login_required
 def item_update(request, pk):
-    item = get_object_or_404(Item, pk=pk)
+    item = get_object_or_404(Item, pk=pk, user=request.user)
 
     if request.method == "POST":
         form = ItemForm(request.POST, request.FILES, instance=item)
@@ -38,7 +38,7 @@ def item_update(request, pk):
 
 @login_required
 def item_delete(request, pk):
-    item = get_object_or_404(Item, pk=pk)
+    item = get_object_or_404(Item, pk=pk, user=request.user)
 
     if request.method == "POST":
         item_name = item.name
@@ -55,6 +55,7 @@ def item_create(request):
             item = form.save(commit=False)
             # All new items should have status ACTIVE
             item.status = Item.ItemStatus.ACTIVE
+            item.user = request.user
             item.save()
             messages.success(
                 request,
@@ -75,7 +76,11 @@ def item_create(request):
 
 @login_required
 def item_list(request):
-    items = Item.objects.select_related("location").order_by("location__name", "name")
+    items = (
+        Item.objects.filter(user=request.user)
+        .select_related("location")
+        .order_by("location__name", "name")
+    )
 
     for item in items:
         item.form = ItemForm(instance=item)  # Attach form directly
@@ -98,31 +103,39 @@ def maintenance_list(request):
 
     task_queryset = Task.objects.all()
 
-    item_queryset = Item.objects.annotate(
-        total_task_count=Count("tasks"),
-        due_task_count=Count("tasks", filter=Q(tasks__next_due_date__lte=today)),
-        tasks_completed_for_period=Count(
-            "tasks",
-            filter=Q(
-                tasks__last_performed__gte=start_of_month,
-                tasks__last_performed__lte=today,
+    item_queryset = (
+        Item.objects.filter(user=request.user)
+        .annotate(
+            total_task_count=Count("tasks"),
+            due_task_count=Count("tasks", filter=Q(tasks__next_due_date__lte=today)),
+            tasks_completed_for_period=Count(
+                "tasks",
+                filter=Q(
+                    tasks__last_performed__gte=start_of_month,
+                    tasks__last_performed__lte=today,
+                ),
             ),
-        ),
-    ).prefetch_related(Prefetch("tasks", queryset=task_queryset))
+        )
+        .prefetch_related(Prefetch("tasks", queryset=task_queryset))
+    )
 
-    locations = Location.objects.annotate(
-        total_task_count=Count("items__tasks"),
-        due_task_count=Count(
-            "items__tasks", filter=Q(items__tasks__next_due_date__lte=today)
-        ),
-        tasks_completed_for_period=Count(
-            "items__tasks",
-            filter=Q(
-                items__tasks__last_performed__gte=start_of_month,
-                items__tasks__last_performed__lte=today,
+    locations = (
+        Location.objects.filter(user=request.user)
+        .annotate(
+            total_task_count=Count("items__tasks"),
+            due_task_count=Count(
+                "items__tasks", filter=Q(items__tasks__next_due_date__lte=today)
             ),
-        ),
-    ).prefetch_related(Prefetch("items", queryset=item_queryset))
+            tasks_completed_for_period=Count(
+                "items__tasks",
+                filter=Q(
+                    items__tasks__last_performed__gte=start_of_month,
+                    items__tasks__last_performed__lte=today,
+                ),
+            ),
+        )
+        .prefetch_related(Prefetch("items", queryset=item_queryset))
+    )
 
     context = {
         "locations": locations,
