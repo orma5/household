@@ -9,6 +9,16 @@ from .forms import ItemForm
 
 
 @login_required
+def item_archive(request, pk):
+    item = get_object_or_404(Item, pk=pk)
+    if request.method == "POST":
+        item.status = Item.ItemStatus.RETIRED
+        item.save()
+        messages.success(request, f"{item.name} has been archived.")
+    return redirect("item-list")
+
+
+@login_required
 def item_update(request, pk):
     item = get_object_or_404(Item, pk=pk)
 
