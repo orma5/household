@@ -14,6 +14,7 @@ class Location(BaseModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="locations"
     )
+    default = models.BooleanField(default=False)
 
     class Meta:
         verbose_name_plural = "Locations"

@@ -5,7 +5,76 @@ from .models import Task, Item, Location
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
-from .forms import ItemForm
+from .forms import ItemForm, LocationForm
+
+
+@login_required
+def settings_view(request):
+    user = request.user
+    locations = Location.objects.filter(user=user).order_by("-default", "name")
+
+    # Attach a form to each location for editing
+    for loc in locations:
+        loc.form = LocationForm(instance=loc)
+
+    form = LocationForm()  # Empty form for creation
+
+    return render(
+        request,
+        "settings.html",
+        {
+            "locations": locations,
+            "form": form,
+        },
+    )
+
+
+@login_required
+def location_delete(request, pk):
+    location = get_object_or_404(Location, pk=pk, user=request.user)
+
+    if location.default:
+        messages.error(request, "The default location cannot be deleted.")
+        return redirect("settings-view")
+
+    if request.method == "POST":
+        location.delete()
+        messages.success(
+            request, f"Location '{location.name}' was deleted successfully."
+        )
+        return redirect("settings-view")
+
+
+@login_required
+def location_create(request):
+    if request.method == "POST":
+        form = LocationForm(request.POST)
+        if form.is_valid():
+            location = form.save(commit=False)
+            location.user = request.user
+            location.default = False  # just to be explicit
+            location.save()
+            messages.success(request, f"Location '{location.name}' created.")
+            return redirect("settings-view")
+    else:
+        form = LocationForm()
+    return render(request, "location_form.html", {"form": form})
+
+
+@login_required
+def location_update(request, pk):
+    location = get_object_or_404(Location, pk=pk, user=request.user)
+
+    if request.method == "POST":
+        form = LocationForm(request.POST, instance=location)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Location '{location.name}' updated.")
+            return redirect("settings-view")
+    else:
+        form = LocationForm(instance=location)
+
+    return render(request, "location_form.html", {"form": form})
 
 
 @login_required

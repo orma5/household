@@ -7,7 +7,7 @@
   --red-color: #ec625d;
 }
 
-.badge-status-active {
+.badge-status-active .card-border-primary {
   background-color: var(--green-color);
   color: white;
 }
@@ -30,4 +30,9 @@
 .badge-brand {
   background-color: var(--turquise-color);
   color: white;
+}
+
+.badge-default-location {
+  background-color: var(--purple-color);
+  color: black;
 }

@@ -1,8 +1,29 @@
 # inventory/forms.py
 
 from django import forms
-from .models import Item
+from .models import Item, Location
 import datetime
+
+
+class LocationForm(forms.ModelForm):
+    class Meta:
+        model = Location
+        fields = [
+            "name",
+            "address",
+            "zip_code",
+            "city",
+            "country_code",
+        ]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "address": forms.TextInput(attrs={"class": "form-control"}),
+            "zip_code": forms.TextInput(attrs={"class": "form-control"}),
+            "city": forms.TextInput(attrs={"class": "form-control"}),
+            "country_code": forms.TextInput(
+                attrs={"class": "form-control", "maxlength": 2}
+            ),
+        }
 
 
 class ItemForm(forms.ModelForm):
