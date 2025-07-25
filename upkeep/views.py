@@ -151,6 +151,9 @@ def item_list(request):
         .order_by("location__name", "name")
     )
 
+    # empty form for item create
+    form = ItemForm()
+
     for item in items:
         item.form = ItemForm(instance=item)  # Attach form directly
 
@@ -161,6 +164,7 @@ def item_list(request):
 
     context = {
         "grouped_items": grouped_items.items(),
+        "form": form,
     }
     return render(request, "item_list.html", context)
 
