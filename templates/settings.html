@@ -1,102 +1,102 @@
 {% extends 'base.html' %}
+{% block page_title %}
+  Settings
+{% endblock %}
+{% block content %}
+  <div class="container mt-4">
+    <h2 class="mb-4">Settings</h2>
 
-{% with page_title='Settings' %}
-  {% block content %}
-    <div class="container mt-4">
-      <h2 class="mb-4">Settings</h2>
-
-      <!-- Location Management Section -->
-      <div class="mb-5">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4 class="mb-0">Locations</h4>
-          <a href="#" class="btn btn-green" data-bs-toggle="modal" data-bs-target="#createLocationModal"><i class="bi bi-plus-lg me-1"></i> Add Location</a>
-        </div>
-
-        <div class="row">
-          {% for location in locations %}
-            <div class="col-12 col-md-6 col-lg-4 mb-3">
-              <div class="card shadow-sm h-100">
-                <div class="card-body">
-                  <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                      <h5 class="card-title mb-1">
-                        {{ location.name }}
-                        {% if location.default %}
-                          <span class="badge badge-status-active text-dark ms-2">Default</span>
-                        {% endif %}
-                      </h5>
-                      {% if location.city or location.country_code %}
-                        <p class="text-muted small mb-0">
-                          {{ location.city }}{% if location.city and location.country_code %}, {% endif %}{{ location.country_code }}
-                        </p>
-                      {% endif %}
-                    </div>
-                    <div class="d-flex flex-column align-items-end gap-2">
-                      <a href="#" class="btn btn-sm btn-blue" data-bs-toggle="modal" data-bs-target="#editLocationModal{{ location.id }}"><i class="bi bi-pencil"></i></a>
-                      {% if not location.default %}
-                        <button type="button" class="btn btn-sm btn-red" title="Delete location" data-bs-toggle="modal" data-bs-target="#confirmDeleteLocationModal{{ location.id }}"><i class="bi bi-trash"></i></button>
-                      {% endif %}
-                    </div>
-                  </div>
-
-                  {% if location.address %}
-                    <p class="mt-2 mb-0 text-muted small">{{ location.address }}</p>
-                  {% endif %}
-
-                  {% if location.zip_code %}
-                    <p class="mb-0 text-muted small">{{ location.zip_code }}</p>
-                  {% endif %}
-                </div>
-              </div>
-            </div>
-
-            {# Edit Location Modal #}
-            <div class="modal fade" id="editLocationModal{{ location.id }}" tabindex="-1" aria-labelledby="editLocationLabel{{ location.id }}" aria-hidden="true">
-              <div class="modal-dialog">
-                <div class="modal-content">
-                  <form method="POST" action="{% url 'location-update' location.id %}">
-                    {% csrf_token %}
-                    <div class="modal-header">
-                      <h5 class="modal-title" id="editLocationLabel{{ location.id }}">Edit Location</h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                      {% include 'components/_location_form.html' with form=location.form %}
-                    </div>
-                    <div class="modal-footer">
-                      <button type="submit" class="btn btn-primary">Save</button>
-                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-            {% include 'components/_location_delete_confirm_modal.html' with location=location %}
-          {% endfor %}
-        </div>
+    <!-- Location Management Section -->
+    <div class="mb-5">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Locations</h4>
+        <a href="#" class="btn btn-green" data-bs-toggle="modal" data-bs-target="#createLocationModal"><i class="bi bi-plus-lg me-1"></i> Add Location</a>
       </div>
 
-      {# Create Location Modal #}
-      <div class="modal fade" id="createLocationModal" tabindex="-1" aria-labelledby="createLocationLabel" aria-hidden="true">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <form method="POST" action="{% url 'location-create' %}">
-              {% csrf_token %}
-              <div class="modal-header">
-                <h5 class="modal-title" id="createLocationLabel">Add New Location</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="row">
+        {% for location in locations %}
+          <div class="col-12 col-md-6 col-lg-4 mb-3">
+            <div class="card shadow-sm h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h5 class="card-title mb-1">
+                      {{ location.name }}
+                      {% if location.default %}
+                        <span class="badge badge-status-active text-dark ms-2">Default</span>
+                      {% endif %}
+                    </h5>
+                    {% if location.city or location.country_code %}
+                      <p class="text-muted small mb-0">
+                        {{ location.city }}{% if location.city and location.country_code %}, {% endif %}{{ location.country_code }}
+                      </p>
+                    {% endif %}
+                  </div>
+                  <div class="d-flex flex-column align-items-end gap-2">
+                    <a href="#" class="btn btn-sm btn-blue" data-bs-toggle="modal" data-bs-target="#editLocationModal{{ location.id }}"><i class="bi bi-pencil"></i></a>
+                    {% if not location.default %}
+                      <button type="button" class="btn btn-sm btn-red" title="Delete location" data-bs-toggle="modal" data-bs-target="#confirmDeleteLocationModal{{ location.id }}"><i class="bi bi-trash"></i></button>
+                    {% endif %}
+                  </div>
+                </div>
+
+                {% if location.address %}
+                  <p class="mt-2 mb-0 text-muted small">{{ location.address }}</p>
+                {% endif %}
+
+                {% if location.zip_code %}
+                  <p class="mb-0 text-muted small">{{ location.zip_code }}</p>
+                {% endif %}
               </div>
-              <div class="modal-body">
-                {% include 'components/_location_form.html' with form=form %}
-              </div>
-              <div class="modal-footer">
-                <button type="submit" class="btn btn-primary">Create</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              </div>
-            </form>
+            </div>
           </div>
+
+          {# Edit Location Modal #}
+          <div class="modal fade" id="editLocationModal{{ location.id }}" tabindex="-1" aria-labelledby="editLocationLabel{{ location.id }}" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <form method="POST" action="{% url 'location-update' location.id %}">
+                  {% csrf_token %}
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="editLocationLabel{{ location.id }}">Edit Location</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    {% include 'components/_location_form.html' with form=location.form %}
+                  </div>
+                  <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% include 'components/_location_delete_confirm_modal.html' with location=location %}
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Create Location Modal #}
+    <div class="modal fade" id="createLocationModal" tabindex="-1" aria-labelledby="createLocationLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form method="POST" action="{% url 'location-create' %}">
+            {% csrf_token %}
+            <div class="modal-header">
+              <h5 class="modal-title" id="createLocationLabel">Add New Location</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              {% include 'components/_location_form.html' with form=form %}
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary">Create</button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
-  {% endblock %}
-{% endwith %}
+  </div>
+{% endblock %}
