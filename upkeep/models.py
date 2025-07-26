@@ -38,10 +38,15 @@ class Item(BaseModel):
         choices=ItemStatus, null=False, default=ItemStatus.ACTIVE
     )
     quantity = models.PositiveIntegerField(default=1)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="items"
+    )
 
     # Optional metadata
     area = models.CharField(max_length=30, blank=True, null=True)
     brand = models.CharField(max_length=255, blank=True, null=True)
+
+    # Optional lifecycle management fields
     model_number = models.CharField(max_length=255, blank=True, null=True)
     serial_number = models.CharField(max_length=255, blank=True, null=True)
 
@@ -61,9 +66,6 @@ class Item(BaseModel):
     manufacturer_manual_url = models.URLField(null=True, blank=True)
 
     end_of_service_date = models.DateField(blank=True, null=True)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="items"
-    )
 
     class Meta:
         verbose_name_plural = "Items"

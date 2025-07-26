@@ -6,18 +6,31 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
 from .forms import ItemForm, LocationForm
+from common.forms import ProfileForm
+from common.models import Profile
 
 
 @login_required
 def settings_view(request):
     user = request.user
-    locations = Location.objects.filter(user=user).order_by("-default", "name")
 
-    # Attach a form to each location for editing
+    # Get or create profile
+    profile, _ = Profile.objects.get_or_create(user=user)
+
+    # Handle profile update
+    if request.method == "POST":
+        profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
+        if profile_form.is_valid():
+            profile_form.save()
+            return redirect("settings-view")
+    else:
+        profile_form = ProfileForm(instance=profile)
+
+    # Handle locations
+    locations = Location.objects.filter(user=user).order_by("-default", "name")
     for loc in locations:
         loc.form = LocationForm(instance=loc)
-
-    form = LocationForm()  # Empty form for creation
+    form = LocationForm()
 
     return render(
         request,
@@ -25,6 +38,7 @@ def settings_view(request):
         {
             "locations": locations,
             "form": form,
+            "profile_form": profile_form,
         },
     )
 
