@@ -159,17 +159,21 @@ def item_create(request):
 
 @login_required
 def item_list(request):
-    items = (
-        Item.objects.filter(user=request.user)
-        .select_related("location")
-        .order_by("location__name", "name")
-    )
+    query = request.GET.get("q", "")
 
-    # empty form for item create
-    form = ItemForm()
+    items = Item.objects.filter(user=request.user).select_related("location")
+
+    if query:
+        items = items.filter(
+            Q(name__icontains=query)
+            | Q(brand__icontains=query)
+            | Q(area__icontains=query)
+        )
+
+    items = items.order_by("location__name", "name")
 
     for item in items:
-        item.form = ItemForm(instance=item)  # Attach form directly
+        item.form = ItemForm(instance=item)
 
     grouped_items = defaultdict(list)
     for item in items:
@@ -178,8 +182,13 @@ def item_list(request):
 
     context = {
         "grouped_items": grouped_items.items(),
-        "form": form,
+        "form": ItemForm(),
     }
+
+    if request.htmx:
+        # Only return the list portion when HTMX requests it
+        return render(request, "components/_item_list.html", context)
+
     return render(request, "item_list.html", context)
 
 

@@ -1,0 +1,29 @@
+{% for location, items in grouped_items %}
+  <h5 class="text-secondary mb-3">{{ location }}</h5>
+  <div class="row mb-4">
+    {% for item in items %}
+      <div id="item-card-{{ item.id }}" class="col-12 col-sm-6 col-lg-4 mb-3">
+        <div class="card shadow-sm rounded-3 h-100" role="button" data-bs-toggle="modal" data-bs-target="#itemDetailModal{{ item.id }}">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <h5 class="card-title mb-0">{{ item.name }}</h5>
+              <span class="badge text-dark badge-{{ item.get_status_badge_class }}" style="opacity: 0.8;">{{ item.get_status_display_name }}</span>
+            </div>
+            {% if item.area %}
+              <p class="text-muted small mb-2">{{ item.area }}</p>
+            {% endif %}
+            {% if item.quantity > 1 %}
+              <span class="badge badge-quantity text-dark mt-2"><i class="bi bi-stack"></i> {{ item.quantity }}</span>
+            {% endif %}
+            {% if item.brand %}
+              <span class="badge badge-brand text-dark mt-2"><i class="bi bi-globe"></i> {{ item.brand }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% include 'components/_item_detail_modal.html' with item=item form=item.form %}
+    {% endfor %}
+  </div>
+{% empty %}
+  <div class="alert alert-info text-center">No items match your search.</div>
+{% endfor %}
