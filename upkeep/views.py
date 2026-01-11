@@ -224,7 +224,7 @@ def task_management_list(request):
     Master list of all maintenance tasks, grouped by:
     - Item (Item -> Tasks) [default]
     - Frequency (Frequency -> Tasks)
-    - None (Flat list)
+    - Area (Item.area -> Tasks)
     """
     query = request.GET.get("q", "")
     group_by = request.GET.get("group_by", "item")
@@ -256,10 +256,15 @@ def task_management_list(request):
         "form": TaskForm(),
     }
 
-    if group_by == "none":
-        # Flat list
-        tasks = tasks.order_by("name")
-        context["tasks"] = tasks
+    if group_by == "area":
+        # Group by Area
+        # structure: { "AreaName": [Task, Task] }
+        tasks = tasks.order_by("item__area", "item__name", "name")
+        grouped_tasks = defaultdict(list)
+        for task in tasks:
+            label = task.item.area if task.item.area else "General"
+            grouped_tasks[label].append(task)
+        context["grouped_tasks"] = dict(grouped_tasks)
 
     elif group_by == "frequency":
         # Group by frequency
