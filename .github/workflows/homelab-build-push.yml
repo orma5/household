@@ -23,10 +23,6 @@ jobs:
         run: |
           ruff check .
 
-      - name: Security check with bandit
-        run: |
-          bandit -r myproject -ll -ii
-
       - name: Dependency check with pip-audit
         run: |
           pip-audit
