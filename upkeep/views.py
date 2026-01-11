@@ -380,6 +380,8 @@ def task_complete(request, pk):
     task = get_object_or_404(Task, pk=pk, item__user=request.user)
     if request.method == "POST":
         task.last_performed = timezone.now().date()
+        # Force recalculation of next due date
+        task.next_due_date = task.calculate_next_due_date()
         task.save()
         messages.success(request, f"Task '{task.name}' marked as completed.")
     return redirect("task-due-list")

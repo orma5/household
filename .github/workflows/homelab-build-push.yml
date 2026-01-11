@@ -2,6 +2,35 @@ name: Homelab build and push
 on: [push]
 
 jobs:
+  code-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r dev-requirements.txt
+
+      - name: Lint with ruff
+        run: |
+          ruff check .
+
+      - name: Security check with bandit
+        run: |
+          bandit -r myproject -ll -ii
+
+      - name: Dependency check with pip-audit
+        run: |
+          pip-audit
+  
   build:
     runs-on: ubuntu-latest
     steps:

@@ -46,13 +46,20 @@ The project follows a standard Django project structure with a modular settings 
 *   **Creation:** When creating a new item, it defaults to the currently active location.
 *   **Status:** Items track status (Active, Retired, Broken) and details like warranty and purchase info.
 
-### 3. Task Management
+### 3. Task Management (CRUD)
 *   **Filtering:** Maintenance tasks are filtered to show only tasks linked to items in the active location.
 *   **Grouping:** Tasks can be grouped by:
     *   **Item:** (Default) Grouped by the specific item they belong to.
     *   **Frequency:** Grouped by how often they occur (e.g., Monthly, Yearly).
     *   **None:** A flat list.
-*   **Logic:** Tasks automatically calculate their `next_due_date` based on the `last_performed` date and `frequency`.
+*   **CRUD:** This module focuses on the creation, update, and deletion of maintenance task definitions.
+
+### 4. Tasks Due (Execution)
+*   **Focus:** A dedicated page ("Task list") for actionable items that are currently due or overdue.
+*   **Interactions:** 
+    *   **Complete:** Marks the task as performed today and automatically schedules the next occurrence based on frequency.
+    *   **Snooze:** Postpones the task's due date by exactly one week without affecting the historical frequency logic.
+*   **Visual Cues:** Tasks are highlighted as "Overdue" or "Due Today" to prioritize user action.
 
 ## Getting Started
 

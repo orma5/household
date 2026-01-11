@@ -74,7 +74,7 @@ class Item(BaseModel):
         return self.name
 
     def is_under_warranty(self):
-        return self.warranty_expiration and self.warranty_expiration >= datetime.date()
+        return self.warranty_expiration and self.warranty_expiration >= datetime.date.today()
 
     def get_status_badge_class(self):
         return {
@@ -119,5 +119,6 @@ class Task(BaseModel):
             return datetime.date.today()
 
     def save(self, *args, **kwargs):
-        self.next_due_date = self.calculate_next_due_date()
+        if not self.next_due_date:
+            self.next_due_date = self.calculate_next_due_date()
         super().save(*args, **kwargs)

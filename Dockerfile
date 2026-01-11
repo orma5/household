@@ -25,4 +25,4 @@ COPY . /app/
 EXPOSE 8000
 
 # Command to run the application
-CMD ["sh", "-c", "python manage.py collectstatic --noinput && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 1 --timeout 300"]
+CMD ["sh", "-c", "python manage.py collectstatic --settings=core.settings.prod --noinput && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 1 --timeout 300"]
