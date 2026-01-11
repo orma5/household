@@ -1,6 +1,7 @@
 from collections import defaultdict
 from django.db.models import Q
 from django.utils import timezone
+from django.db.models.functions import Coalesce, Greatest
 from .models import Task, Item, Location
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
@@ -65,7 +66,7 @@ def switch_location(request, pk):
     location = get_object_or_404(Location, pk=pk, user=request.user)
     request.session["active_location_id"] = location.id
     messages.success(request, f"Switched to location: {location.name}")
-    
+
     # Redirect to where the user came from, or default to home/item-list
     next_url = request.META.get("HTTP_REFERER", "item-list")
     return redirect(next_url)
@@ -185,7 +186,11 @@ def item_list(request):
         items = items.filter(location_id=active_location_id)
     else:
         # Fallback: pick default
-        default_loc = Location.objects.filter(user=request.user).order_by("-default", "name").first()
+        default_loc = (
+            Location.objects.filter(user=request.user)
+            .order_by("-default", "name")
+            .first()
+        )
         if default_loc:
             items = items.filter(location=default_loc)
             request.session["active_location_id"] = default_loc.id
@@ -202,7 +207,7 @@ def item_list(request):
     for item in items:
         item.form = ItemForm(instance=item)
 
-    # No longer grouping by location. 
+    # No longer grouping by location.
     # We can group by Area if desired, or just pass flat list.
     # The template expects 'grouped_items', so let's adjust the template or adapter here.
     # Let's pass 'items' directly and update the template to iterate over items.
@@ -217,6 +222,7 @@ def item_list(request):
         return render(request, "components/_item_list.html", context)
 
     return render(request, "item_list.html", context)
+
 
 @login_required
 def task_management_list(request):
@@ -239,7 +245,11 @@ def task_management_list(request):
     if active_location_id:
         tasks = tasks.filter(item__location_id=active_location_id)
     else:
-        default_loc = Location.objects.filter(user=request.user).order_by("-default", "name").first()
+        default_loc = (
+            Location.objects.filter(user=request.user)
+            .order_by("-default", "name")
+            .first()
+        )
         if default_loc:
             tasks = tasks.filter(item__location=default_loc)
             request.session["active_location_id"] = default_loc.id
@@ -309,25 +319,27 @@ def task_create(request):
             task = form.save(commit=False)
             # Verify the item belongs to the user
             if task.item.user != request.user:
-                 messages.error(request, "You cannot add tasks to items you don't own.")
-                 return redirect("task-management-list")
-            
+                messages.error(request, "You cannot add tasks to items you don't own.")
+                return redirect("task-management-list")
+
             task.save()
-            messages.success(request, f"Task '{task.name}' created for '{task.item.name}'.")
-            
-            # Redirect based on where the user came from? 
+            messages.success(
+                request, f"Task '{task.name}' created for '{task.item.name}'."
+            )
+
+            # Redirect based on where the user came from?
             # For now, default to maintenance list.
             return redirect("task-management-list")
         else:
-             # If HTMX, we should return the form with errors
-             pass
+            # If HTMX, we should return the form with errors
+            pass
     else:
         initial_data = {}
         item_id = request.GET.get("item")
         if item_id:
             item = get_object_or_404(Item, pk=item_id, user=request.user)
             initial_data["item"] = item
-            
+
         form = TaskForm(initial=initial_data)
         # Filter the 'item' dropdown to only show User's items in active location
         items_qs = Item.objects.filter(user=request.user)
@@ -351,7 +363,7 @@ def task_update(request, pk):
             if updated_task.item.user != request.user:
                 messages.error(request, "Invalid item selection.")
                 return redirect("task-management-list")
-            
+
             updated_task.save()
             messages.success(request, f"Task '{task.name}' updated.")
             return redirect("task-management-list")
@@ -363,7 +375,9 @@ def task_update(request, pk):
             items_qs = items_qs.filter(location_id=active_location_id)
         form.fields["item"].queryset = items_qs
 
-    return render(request, "components/_task_create_modal.html", {"form": form, "task": task})
+    return render(
+        request, "components/_task_create_modal.html", {"form": form, "task": task}
+    )
 
 
 @login_required
@@ -375,7 +389,7 @@ def task_delete(request, pk):
         task.delete()
         messages.success(request, f"Task '{task_name}' deleted.")
         return redirect("task-management-list")
-    
+
     # Optional: Confirmation modal logic if GET
     return render(request, "components/_task_delete_confirm_modal.html", {"task": task})
 
@@ -392,15 +406,16 @@ def task_complete(request, pk):
         task.snoozed_until = None
         task.save()
         messages.success(request, f"Task '{task.name}' marked as completed.")
-        
+
         if request.htmx:
             from django.http import HttpResponse
+
             return HttpResponse("")
 
         # Redirect to where the user came from
         next_url = request.META.get("HTTP_REFERER", "task-due-list")
         return redirect(next_url)
-    
+
     # If GET, technically we shouldn't do anything or show a confirmation?
     # For now, redirect to list.
     return redirect("task-due-list")
@@ -414,309 +429,69 @@ def task_snooze(request, pk):
         task.snoozed_until = timezone.now().date() + datetime.timedelta(days=7)
         task.snooze_count += 1
         task.save()
-        messages.success(request, f"Task '{task.name}' snoozed for 1 week from today. (Total snoozes: {task.snooze_count})")
+        messages.success(
+            request,
+            f"Task '{task.name}' snoozed for 1 week from today. (Total snoozes: {task.snooze_count})",
+        )
     return redirect("task-due-list")
 
 
-
-
-
-
-
-
-from django.db.models.functions import Coalesce, Greatest
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @login_required
-
-
-
-
-
-
-
-
 def task_due_list(request):
-
-
-
-
-
-
-
-
     """
-
-
-
-
-
-
-
-
     Shows only tasks that are due today or overdue, considering snoozes.
-
-
-
-
-
-
-
-
     Sorted from least overdue (closest to today) to most overdue.
-
-
-
-
-
-
-
-
     """
-
-
-
-
-
-
-
 
     today = timezone.now().date()
 
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
     # Task is due if:
-
-
-
-
-
-
-
 
     # 1. It is snoozed and the snooze has expired: snoozed_until <= today
 
-
-
-
-
-
-
-
     # 2. It is NOT snoozed and it is due: snoozed_until IS NULL AND next_due_date <= today
 
-
-
-
-
-
-
-
-    tasks = Task.objects.filter(
-
-
-
-
-
-
-
-
-        item__user=request.user
-
-
-
-
-
-
-
-
-    ).filter(
-
-
-
-
-
-
-
-
-        Q(snoozed_until__lte=today) | 
-
-
-
-
-
-
-
-
-        Q(snoozed_until__isnull=True, next_due_date__lte=today)
-
-
-
-
-
-
-
-
-    ).annotate(
-
-
-
-
-
-
-
-
-        # Calculate the effective due date for sorting.
-
-
-
-
-
-
-
-
-        # We use the later of next_due_date and snoozed_until.
-
-
-
-
-
-
-
-
-        effective_due_date=Greatest(
-
-
-
-
-
-
-
-
-            Coalesce("next_due_date", "snoozed_until"),
-
-
-
-
-
-
-
-
-            Coalesce("snoozed_until", "next_due_date")
-
-
-
-
-
-
-
-
+    tasks = (
+        Task.objects.filter(item__user=request.user)
+        .filter(
+            Q(snoozed_until__lte=today)
+            | Q(snoozed_until__isnull=True, next_due_date__lte=today)
         )
-
-
-
-
-
-
-
-
-    ).select_related("item", "item__location").order_by("-effective_due_date", "name")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        .annotate(
+            # Calculate the effective due date for sorting.
+            # We use the later of next_due_date and snoozed_until.
+            effective_due_date=Greatest(
+                Coalesce("next_due_date", "snoozed_until"),
+                Coalesce("snoozed_until", "next_due_date"),
+            )
+        )
+        .select_related("item", "item__location")
+        .order_by("-effective_due_date", "name")
+    )
 
     # Filter by active location
 
-
     active_location_id = request.session.get("active_location_id")
 
-
     if active_location_id:
-
-
         tasks = tasks.filter(item__location_id=active_location_id)
 
-
     else:
-
-
-        # Standard fallback if needed, or show all? 
-
+        # Standard fallback if needed, or show all?
 
         # Existing pattern uses default location if none selected.
 
-
-        default_loc = Location.objects.filter(user=request.user).order_by("-default", "name").first()
-
+        default_loc = (
+            Location.objects.filter(user=request.user)
+            .order_by("-default", "name")
+            .first()
+        )
 
         if default_loc:
-
-
             tasks = tasks.filter(item__location=default_loc)
-
 
             request.session["active_location_id"] = default_loc.id
 
-
-
-
-
-    context = {
-
-
-        "tasks": tasks,
-
-
-        "today": today
-
-
-    }
-
-
-    
-
+    context = {"tasks": tasks, "today": today}
 
     return render(request, "task_due_list.html", context)
-
