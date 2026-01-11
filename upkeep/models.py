@@ -105,6 +105,8 @@ class Task(BaseModel):
     estimated_hours_to_complete = models.PositiveIntegerField(blank=True, null=True)
     last_performed = models.DateField(blank=True, null=True)
     next_due_date = models.DateField(blank=True, null=True)
+    snoozed_until = models.DateField(blank=True, null=True)
+    snooze_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         verbose_name_plural = "Tasks"
@@ -121,4 +123,8 @@ class Task(BaseModel):
     def save(self, *args, **kwargs):
         if not self.next_due_date:
             self.next_due_date = self.calculate_next_due_date()
+        
+        # If last_performed was just updated, reset snooze data
+        # Note: This is a simple check; for more robust tracking one might use __init__ to track old values
+        # but for this logic it's usually sufficient if task_complete handles it.
         super().save(*args, **kwargs)

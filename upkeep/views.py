@@ -387,36 +387,24 @@ def task_complete(request, pk):
         task.last_performed = timezone.now().date()
         # Force recalculation of next due date
         task.next_due_date = task.calculate_next_due_date()
+        # Reset snooze data
+        task.snooze_count = 0
+        task.snoozed_until = None
         task.save()
         messages.success(request, f"Task '{task.name}' marked as completed.")
     return redirect("task-due-list")
 
 
 @login_required
-
-
 def task_snooze(request, pk):
-
-
     task = get_object_or_404(Task, pk=pk, item__user=request.user)
-
-
     if request.method == "POST":
-
-
-        new_due_date = (task.next_due_date or timezone.now().date()) + datetime.timedelta(days=7)
-
-
-        # Bypass save() logic which recalculates due date based on frequency
-
-
-        Task.objects.filter(pk=pk).update(next_due_date=new_due_date)
-
-
-        messages.success(request, f"Task '{task.name}' snoozed for 1 week.")
-
-
-    return redirect("task-due-list") # Redirect back to the due list
+        # Snooze for exactly 7 days from today
+        task.snoozed_until = timezone.now().date() + datetime.timedelta(days=7)
+        task.snooze_count += 1
+        task.save()
+        messages.success(request, f"Task '{task.name}' snoozed for 1 week from today. (Total snoozes: {task.snooze_count})")
+    return redirect("task-due-list")
 
 
 
@@ -434,7 +422,7 @@ def task_due_list(request):
     """
 
 
-    Shows only tasks that are due today or overdue.
+    Shows only tasks that are due today or overdue, considering snoozes.
 
 
     """
@@ -446,16 +434,34 @@ def task_due_list(request):
     
 
 
+    # Task is due if:
+
+
+    # 1. It is snoozed and the snooze has expired: snoozed_until <= today
+
+
+    # 2. It is NOT snoozed and it is due: snoozed_until IS NULL AND next_due_date <= today
+
+
     tasks = Task.objects.filter(
 
 
-        item__user=request.user,
+        item__user=request.user
 
 
-        next_due_date__lte=today
+    ).filter(
 
 
-    ).select_related("item", "item__location").order_by("next_due_date", "name")
+        Q(snoozed_until__lte=today) | 
+
+
+        Q(snoozed_until__isnull=True, next_due_date__lte=today)
+
+
+    ).select_related("item", "item__location").order_by("snoozed_until", "next_due_date", "name")
+
+
+
 
 
 
