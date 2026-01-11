@@ -49,3 +49,8 @@ jobs:
           push: true
           # The tag must be: registry.home.dkms.se/master/repo-name:latest
           tags: ${{ secrets.REGISTRY_HOST }}/${{ secrets.REGISTRY_USER }}/${{ secrets.DOCKERHUB_REPO }}:latest
+      
+      # 3. Trigger Portainer webhook to pull the new image
+       - name: Trigger Portainer webhook with tag
+        run: |
+          curl -X POST "${{ secrets.PORTAINER_HOME_WEBHOOK }}
