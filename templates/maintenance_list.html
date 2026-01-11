@@ -23,7 +23,7 @@
                 </div>
             </div>
 
-            <form hx-get="{% url 'task-management-list' %}" hx-target="#task-list-container" hx-push-url="true" hx-trigger="keyup changed delay:300ms from:input" class="position-relative">
+            <form hx-get="{% url 'task-management-list' %}" hx-target="#task-list-container" hx-push-url="true" hx-trigger="keyup changed delay:300ms" class="position-relative">
                 <input type="hidden" name="group_by" value="{{ grouping_type|default:'item' }}">
                 <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-4 text-muted"></i>
                 <input type="text" name="q" value="{{ request.GET.q }}" class="form-control rounded-pill ps-5 pe-5 search-input" placeholder="Search tasks..." id="search-input" />
