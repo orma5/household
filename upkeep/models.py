@@ -114,6 +114,23 @@ class Task(BaseModel):
     def __str__(self):
         return f"{self.name} ({self.item.name})"
 
+    @property
+    def days_overdue(self):
+        from django.utils import timezone
+        
+        # Determine the effective due date: use snoozed_until if it's later than next_due_date
+        effective_due_date = self.next_due_date
+        if self.snoozed_until:
+            if not effective_due_date or self.snoozed_until > effective_due_date:
+                effective_due_date = self.snoozed_until
+        
+        if not effective_due_date:
+            return 0
+            
+        today = timezone.now().date()
+        delta = today - effective_due_date
+        return delta.days
+
     def calculate_next_due_date(self):
         if self.last_performed and self.frequency:
             return self.last_performed + datetime.timedelta(days=self.frequency)

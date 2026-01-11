@@ -413,52 +413,241 @@ def task_snooze(request, pk):
 
 
 
+from django.db.models.functions import Coalesce, Greatest
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @login_required
+
+
+
+
+
+
 
 
 def task_due_list(request):
 
 
+
+
+
+
+
+
     """
+
+
+
+
+
+
 
 
     Shows only tasks that are due today or overdue, considering snoozes.
 
 
+
+
+
+
+
+
+    Sorted from least overdue (closest to today) to most overdue.
+
+
+
+
+
+
+
+
     """
+
+
+
+
+
+
 
 
     today = timezone.now().date()
 
 
+
+
+
+
+
+
     
+
+
+
+
+
+
 
 
     # Task is due if:
 
 
+
+
+
+
+
+
     # 1. It is snoozed and the snooze has expired: snoozed_until <= today
+
+
+
+
+
+
 
 
     # 2. It is NOT snoozed and it is due: snoozed_until IS NULL AND next_due_date <= today
 
 
+
+
+
+
+
+
     tasks = Task.objects.filter(
+
+
+
+
+
+
 
 
         item__user=request.user
 
 
+
+
+
+
+
+
     ).filter(
+
+
+
+
+
+
 
 
         Q(snoozed_until__lte=today) | 
 
 
+
+
+
+
+
+
         Q(snoozed_until__isnull=True, next_due_date__lte=today)
 
 
-    ).select_related("item", "item__location").order_by("snoozed_until", "next_due_date", "name")
+
+
+
+
+
+
+    ).annotate(
+
+
+
+
+
+
+
+
+        # Calculate the effective due date for sorting.
+
+
+
+
+
+
+
+
+        # We use the later of next_due_date and snoozed_until.
+
+
+
+
+
+
+
+
+        effective_due_date=Greatest(
+
+
+
+
+
+
+
+
+            Coalesce("next_due_date", "snoozed_until"),
+
+
+
+
+
+
+
+
+            Coalesce("snoozed_until", "next_due_date")
+
+
+
+
+
+
+
+
+        )
+
+
+
+
+
+
+
+
+    ).select_related("item", "item__location").order_by("-effective_due_date", "name")
+
+
+
+
+
+
+
+
+
 
 
 
