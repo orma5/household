@@ -1,5 +1,5 @@
 from collections import defaultdict
-from django.db.models import Count, Q, Prefetch
+from django.db.models import Q
 from django.utils import timezone
 from .models import Task, Item, Location
 from django.contrib.auth.decorators import login_required

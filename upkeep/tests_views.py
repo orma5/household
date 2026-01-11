@@ -19,13 +19,13 @@ class UpkeepViewTests(TestCase):
     def test_task_due_list_filtering(self):
         # Create one due task and one future task
         today = timezone.now().date()
-        due_task = Task.objects.create(
+        Task.objects.create(
             name="Due Task", 
             item=self.item, 
             frequency=Task.Frequency.DAILY,
             next_due_date=today
         )
-        future_task = Task.objects.create(
+        Task.objects.create(
             name="Future Task", 
             item=self.item, 
             frequency=Task.Frequency.WEEKLY,
@@ -41,5 +41,5 @@ class UpkeepViewTests(TestCase):
         loc2 = Location.objects.create(name="Cabin", user=self.user)
         url = reverse('switch-location', args=[loc2.id])
         
-        response = self.client.get(url)
+        self.client.get(url)
         self.assertEqual(self.client.session['active_location_id'], loc2.id)

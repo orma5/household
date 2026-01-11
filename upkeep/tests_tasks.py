@@ -66,7 +66,7 @@ class TaskManagementTests(TestCase):
         self.task.save()
         
         url = reverse('task-snooze', args=[self.task.pk])
-        response = self.client.post(url)
+        self.client.post(url)
         
         self.task.refresh_from_db()
         # Should be today + 7 days
