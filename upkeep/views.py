@@ -392,6 +392,17 @@ def task_complete(request, pk):
         task.snoozed_until = None
         task.save()
         messages.success(request, f"Task '{task.name}' marked as completed.")
+        
+        if request.htmx:
+            from django.http import HttpResponse
+            return HttpResponse("")
+
+        # Redirect to where the user came from
+        next_url = request.META.get("HTTP_REFERER", "task-due-list")
+        return redirect(next_url)
+    
+    # If GET, technically we shouldn't do anything or show a confirmation?
+    # For now, redirect to list.
     return redirect("task-due-list")
 
 
