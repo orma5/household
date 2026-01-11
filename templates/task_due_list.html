@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block page_title %}
+  Tasks Due
+{% endblock %}
+{% block content %}
+  <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Tasks Due</h2>
+        <small class="text-muted">{{ today|date:"l, F j, Y" }}</small>
+    </div>
+
+    <div id="task-due-list-container">
+        {% if tasks %}
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for task in tasks %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm border-0 {% if task.next_due_date < today %}border-start border-danger border-5{% else %}border-start border-warning border-5{% endif %}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title mb-0">{{ task.name }}</h5>
+                                {% if task.next_due_date < today %}
+                                    <span class="badge bg-danger">Overdue</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Due Today</span>
+                                {% endif %}
+                            </div>
+                            <h6 class="card-subtitle mb-3 text-muted">
+                                <i class="bi bi-box-seam me-1"></i> {{ task.item.name }}
+                            </h6>
+                            <p class="card-text small text-secondary">
+                                {% if task.description %}
+                                    {{ task.description|truncatechars:100 }}
+                                {% else %}
+                                    <em>No description provided.</em>
+                                {% endif %}
+                            </p>
+                            
+                            {% if task.item.location %}
+                            <div class="mb-3">
+                                <small class="text-muted"><i class="bi bi-geo-alt"></i> {{ task.item.location.name }}</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer bg-white border-top-0 d-flex justify-content-between pb-3">
+                             <form hx-post="{% url 'task-snooze' task.pk %}" hx-target="body" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-secondary btn-sm" title="Snooze 1 Week">
+                                    <i class="bi bi-clock"></i> Snooze
+                                </button>
+                            </form>
+                            
+                            <form hx-post="{% url 'task-complete' task.pk %}" hx-target="body" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm" title="Mark as Done">
+                                    <i class="bi bi-check-lg"></i> Complete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                </div>
+                <h3>All caught up!</h3>
+                <p class="text-muted">No maintenance tasks are currently due.</p>
+                <a href="{% url 'task-management-list' %}" class="btn btn-outline-primary mt-3">View All Tasks</a>
+            </div>
+        {% endif %}
+    </div>
+  </div>
+{% endblock %}

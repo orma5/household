@@ -8,6 +8,7 @@ from django.contrib import messages
 from .forms import ItemForm, LocationForm, TaskForm
 from common.forms import ProfileForm
 from common.models import Profile
+import datetime
 
 
 @login_required
@@ -57,6 +58,17 @@ def location_delete(request, pk):
             request, f"Location '{location.name}' was deleted successfully."
         )
         return redirect("settings-view")
+
+
+@login_required
+def switch_location(request, pk):
+    location = get_object_or_404(Location, pk=pk, user=request.user)
+    request.session["active_location_id"] = location.id
+    messages.success(request, f"Switched to location: {location.name}")
+    
+    # Redirect to where the user came from, or default to home/item-list
+    next_url = request.META.get("HTTP_REFERER", "item-list")
+    return redirect(next_url)
 
 
 @login_required
@@ -151,7 +163,11 @@ def item_create(request):
                 "There was a problem creating the item. Please check the form for errors.",
             )
     else:
-        form = ItemForm()
+        initial_data = {}
+        active_location_id = request.session.get("active_location_id")
+        if active_location_id:
+            initial_data["location"] = active_location_id
+        form = ItemForm(initial=initial_data)
 
     # Optional: this view can render a standalone page or return a partial if needed
     return render(request, "inventory/item_create.html", {"form": form})
@@ -163,6 +179,17 @@ def item_list(request):
 
     items = Item.objects.filter(user=request.user).select_related("location")
 
+    # Filter by active location
+    active_location_id = request.session.get("active_location_id")
+    if active_location_id:
+        items = items.filter(location_id=active_location_id)
+    else:
+        # Fallback: pick default
+        default_loc = Location.objects.filter(user=request.user).order_by("-default", "name").first()
+        if default_loc:
+            items = items.filter(location=default_loc)
+            request.session["active_location_id"] = default_loc.id
+
     if query:
         items = items.filter(
             Q(name__icontains=query)
@@ -170,18 +197,18 @@ def item_list(request):
             | Q(area__icontains=query)
         )
 
-    items = items.order_by("location__name", "name")
+    items = items.order_by("area", "name")
 
     for item in items:
         item.form = ItemForm(instance=item)
 
-    grouped_items = defaultdict(list)
-    for item in items:
-        loc_name = item.location.name if item.location else "No location"
-        grouped_items[loc_name].append(item)
+    # No longer grouping by location. 
+    # We can group by Area if desired, or just pass flat list.
+    # The template expects 'grouped_items', so let's adjust the template or adapter here.
+    # Let's pass 'items' directly and update the template to iterate over items.
 
     context = {
-        "grouped_items": grouped_items.items(),
+        "items": items,
         "form": ItemForm(),
     }
 
@@ -195,7 +222,7 @@ def item_list(request):
 def task_management_list(request):
     """
     Master list of all maintenance tasks, grouped by:
-    - Item (Location -> Item) [default]
+    - Item (Item -> Tasks) [default]
     - Frequency (Frequency -> Tasks)
     - None (Flat list)
     """
@@ -206,6 +233,16 @@ def task_management_list(request):
     tasks = Task.objects.filter(item__user=request.user).select_related(
         "item", "item__location"
     )
+
+    # Filter by active location
+    active_location_id = request.session.get("active_location_id")
+    if active_location_id:
+        tasks = tasks.filter(item__location_id=active_location_id)
+    else:
+        default_loc = Location.objects.filter(user=request.user).order_by("-default", "name").first()
+        if default_loc:
+            tasks = tasks.filter(item__location=default_loc)
+            request.session["active_location_id"] = default_loc.id
 
     if query:
         tasks = tasks.filter(
@@ -235,25 +272,22 @@ def task_management_list(request):
         context["grouped_tasks"] = dict(grouped_tasks)
 
     else:  # group_by == "item" (default)
-        # Grouping logic: Location -> Item -> Tasks
-        # structure: { "LocationName": { "ItemName": [Task, Task] } }
-        tasks = tasks.order_by("item__location__name", "item__name", "name")
-        grouped_tasks = defaultdict(lambda: defaultdict(list))
+        # Grouping logic: Item -> Tasks (No longer Location -> Item -> Tasks)
+        # structure: { "ItemName": [Task, Task] }
+        tasks = tasks.order_by("item__name", "name")
+        grouped_tasks = defaultdict(list)
 
         for task in tasks:
-            loc_name = task.item.location.name if task.item.location else "Unassigned"
             item_name = task.item.name
-            grouped_tasks[loc_name][item_name].append(task)
+            grouped_tasks[item_name].append(task)
 
-        # Convert to standard dict for safety
-        final_grouped_tasks = {
-            loc: dict(items) for loc, items in grouped_tasks.items()
-        }
-        context["grouped_tasks"] = final_grouped_tasks
+        context["grouped_tasks"] = dict(grouped_tasks)
 
-    if request.htmx and query:
-        # Note: HTMX filtering logic might need to be specific if we want partials.
-        # For now, we return the full page which HTMX will parse and swap.
+    if request.htmx:
+        # If it's an HTMX request, we can still return the full template
+        # and let HTMX use hx-select if specified, or just return the full thing
+        # and HTMX will swap the whole #task-list-container content.
+        # However, to avoid returning the whole base.html wrapper, we can check for HTMX.
         pass
 
     return render(request, "maintenance_list.html", context)
@@ -290,8 +324,12 @@ def task_create(request):
             initial_data["item"] = item
             
         form = TaskForm(initial=initial_data)
-        # Filter the 'item' dropdown to only show User's items
-        form.fields["item"].queryset = Item.objects.filter(user=request.user)
+        # Filter the 'item' dropdown to only show User's items in active location
+        items_qs = Item.objects.filter(user=request.user)
+        active_location_id = request.session.get("active_location_id")
+        if active_location_id:
+            items_qs = items_qs.filter(location_id=active_location_id)
+        form.fields["item"].queryset = items_qs
 
     return render(request, "components/_task_create_modal.html", {"form": form})
 
@@ -314,7 +352,11 @@ def task_update(request, pk):
             return redirect("task-management-list")
     else:
         form = TaskForm(instance=task)
-        form.fields["item"].queryset = Item.objects.filter(user=request.user)
+        items_qs = Item.objects.filter(user=request.user)
+        active_location_id = request.session.get("active_location_id")
+        if active_location_id:
+            items_qs = items_qs.filter(location_id=active_location_id)
+        form.fields["item"].queryset = items_qs
 
     return render(request, "components/_task_create_modal.html", {"form": form, "task": task})
 
@@ -331,3 +373,137 @@ def task_delete(request, pk):
     
     # Optional: Confirmation modal logic if GET
     return render(request, "components/_task_delete_confirm_modal.html", {"task": task})
+
+
+@login_required
+def task_complete(request, pk):
+    task = get_object_or_404(Task, pk=pk, item__user=request.user)
+    if request.method == "POST":
+        task.last_performed = timezone.now().date()
+        task.save()
+        messages.success(request, f"Task '{task.name}' marked as completed.")
+    return redirect("task-due-list")
+
+
+@login_required
+
+
+def task_snooze(request, pk):
+
+
+    task = get_object_or_404(Task, pk=pk, item__user=request.user)
+
+
+    if request.method == "POST":
+
+
+        new_due_date = (task.next_due_date or timezone.now().date()) + datetime.timedelta(days=7)
+
+
+        # Bypass save() logic which recalculates due date based on frequency
+
+
+        Task.objects.filter(pk=pk).update(next_due_date=new_due_date)
+
+
+        messages.success(request, f"Task '{task.name}' snoozed for 1 week.")
+
+
+    return redirect("task-due-list") # Redirect back to the due list
+
+
+
+
+
+
+
+
+@login_required
+
+
+def task_due_list(request):
+
+
+    """
+
+
+    Shows only tasks that are due today or overdue.
+
+
+    """
+
+
+    today = timezone.now().date()
+
+
+    
+
+
+    tasks = Task.objects.filter(
+
+
+        item__user=request.user,
+
+
+        next_due_date__lte=today
+
+
+    ).select_related("item", "item__location").order_by("next_due_date", "name")
+
+
+
+
+
+    # Filter by active location
+
+
+    active_location_id = request.session.get("active_location_id")
+
+
+    if active_location_id:
+
+
+        tasks = tasks.filter(item__location_id=active_location_id)
+
+
+    else:
+
+
+        # Standard fallback if needed, or show all? 
+
+
+        # Existing pattern uses default location if none selected.
+
+
+        default_loc = Location.objects.filter(user=request.user).order_by("-default", "name").first()
+
+
+        if default_loc:
+
+
+            tasks = tasks.filter(item__location=default_loc)
+
+
+            request.session["active_location_id"] = default_loc.id
+
+
+
+
+
+    context = {
+
+
+        "tasks": tasks,
+
+
+        "today": today
+
+
+    }
+
+
+    
+
+
+    return render(request, "task_due_list.html", context)
+

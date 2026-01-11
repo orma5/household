@@ -88,34 +88,30 @@
 
       {% else %}
           <!-- Group by Item (Default) -->
-          {% for location, item_dict in grouped_tasks.items %}
-            <h5 class="text-secondary mt-4 mb-2 border-bottom pb-2">{{ location }}</h5>
-            
-            {% for item_name, tasks in item_dict.items %}
-                <div class="card mb-3 shadow-sm">
-                    <div class="card-header bg-light">
-                        <strong class="text-dark">{{ item_name }}</strong>
-                    </div>
-                    <ul class="list-group list-group-flush">
-                        {% for task in tasks %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="fw-bold">{{ task.name }}</span>
-                                    <small class="text-muted d-block">{{ task.get_frequency_display }} 
-                                        {% if task.next_due_date %}
-                                            &bull; Due: {{ task.next_due_date }}
-                                        {% endif %}
-                                    </small>
-                                </div>
-                                <div>
-                                    <a href="{% url 'task-update' task.pk %}" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#taskCreateModal" hx-get="{% url 'task-update' task.pk %}" hx-target="#taskCreateModal .modal-content"><i class="bi bi-pencil"></i></a>
-                                    <a href="{% url 'task-delete' task.pk %}" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#taskDeleteModal" hx-get="{% url 'task-delete' task.pk %}" hx-target="#taskDeleteModal .modal-content"><i class="bi bi-trash"></i></a>
-                                </div>
-                            </li>
-                        {% endfor %}
-                    </ul>
+          {% for item_name, tasks in grouped_tasks.items %}
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header bg-light">
+                    <strong class="text-dark">{{ item_name }}</strong>
                 </div>
-            {% endfor %}
+                <ul class="list-group list-group-flush">
+                    {% for task in tasks %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-bold">{{ task.name }}</span>
+                                <small class="text-muted d-block">{{ task.get_frequency_display }} 
+                                    {% if task.next_due_date %}
+                                        &bull; Due: {{ task.next_due_date }}
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <div>
+                                <a href="{% url 'task-update' task.pk %}" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#taskCreateModal" hx-get="{% url 'task-update' task.pk %}" hx-target="#taskCreateModal .modal-content"><i class="bi bi-pencil"></i></a>
+                                <a href="{% url 'task-delete' task.pk %}" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#taskDeleteModal" hx-get="{% url 'task-delete' task.pk %}" hx-target="#taskDeleteModal .modal-content"><i class="bi bi-trash"></i></a>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
           {% endfor %}
       {% endif %}
     </div>

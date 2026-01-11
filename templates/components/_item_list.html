@@ -1,5 +1,3 @@
-{% for location, items in grouped_items %}
-  <h5 class="text-secondary mb-3">{{ location }}</h5>
   <div class="row mb-4">
     {% for item in items %}
       <div id="item-card-{{ item.id }}" class="col-12 col-sm-6 col-lg-4 mb-3">
@@ -22,8 +20,9 @@
         </div>
       </div>
       {% include 'components/_item_detail_modal.html' with item=item form=item.form %}
+    {% empty %}
+      <div class="col-12">
+        <div class="alert alert-info text-center">No items match your search.</div>
+      </div>
     {% endfor %}
   </div>
-{% empty %}
-  <div class="alert alert-info text-center">No items match your search.</div>
-{% endfor %}

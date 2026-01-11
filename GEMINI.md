@@ -3,7 +3,7 @@
 ## Project Overview
 
 This is a Django-based application designed for household management. It allows users to track:
-*   **Locations:** Physical areas (e.g., rooms, properties) where items are stored.
+*   **Locations:** Physical areas (e.g., rooms, properties) where items are stored. The app functions on a "Single Active Location" paradigm, where the user selects a context (e.g., "Main House") and manages items/tasks specifically for that location.
 *   **Items:** Physical assets (appliances, electronics, tools) with details like purchase date, warranty status, and manuals.
 *   **Tasks:** Recurring maintenance tasks associated with items (e.g., changing filters, servicing).
 
@@ -28,10 +28,31 @@ The project follows a standard Django project structure with a modular settings 
 ### Key Technologies
 
 *   **Backend:** Python 3.13, Django 5.2
-*   **Frontend:** Django Templates, HTMX, CSS
+*   **Frontend:** Django Templates, HTMX, CSS (Bootstrap 5)
 *   **Database:** PostgreSQL (`psycopg` driver)
 *   **Server:** Gunicorn (production), Django development server (local)
 *   **Containerization:** Docker
+
+## Functional Modules
+
+### 1. Locations
+*   **Active Location:** The application maintains an `active_location` in the user's session.
+*   **Context Processor:** A global context processor (`upkeep/context_processors.py`) ensures the active location is available to all templates (e.g., for the top bar selector).
+*   **Switching:** Users can switch their active location via the top bar. This persists across their session.
+*   **Management:** Locations can be added, edited, or deleted via the Settings page.
+
+### 2. Item Inventory
+*   **Filtering:** The Item List view filters items to show *only* those belonging to the currently active location.
+*   **Creation:** When creating a new item, it defaults to the currently active location.
+*   **Status:** Items track status (Active, Retired, Broken) and details like warranty and purchase info.
+
+### 3. Task Management
+*   **Filtering:** Maintenance tasks are filtered to show only tasks linked to items in the active location.
+*   **Grouping:** Tasks can be grouped by:
+    *   **Item:** (Default) Grouped by the specific item they belong to.
+    *   **Frequency:** Grouped by how often they occur (e.g., Monthly, Yearly).
+    *   **None:** A flat list.
+*   **Logic:** Tasks automatically calculate their `next_due_date` based on the `last_performed` date and `frequency`.
 
 ## Getting Started
 
