@@ -53,4 +53,4 @@ jobs:
       # 3. Trigger Portainer webhook to pull the new image
       - name: Trigger Portainer webhook with tag
         run: |
-          curl -X POST "${{ secrets.PORTAINER_HOME_WEBHOOK }}
+          curl -X POST "${{ secrets.PORTAINER_HOME_WEBHOOK }}"
