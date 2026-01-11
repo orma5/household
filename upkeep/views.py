@@ -5,7 +5,7 @@ from .models import Task, Item, Location
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
-from .forms import ItemForm, LocationForm
+from .forms import ItemForm, LocationForm, TaskForm
 from common.forms import ProfileForm
 from common.models import Profile
 
@@ -190,3 +190,144 @@ def item_list(request):
         return render(request, "components/_item_list.html", context)
 
     return render(request, "item_list.html", context)
+
+@login_required
+def task_management_list(request):
+    """
+    Master list of all maintenance tasks, grouped by:
+    - Item (Location -> Item) [default]
+    - Frequency (Frequency -> Tasks)
+    - None (Flat list)
+    """
+    query = request.GET.get("q", "")
+    group_by = request.GET.get("group_by", "item")
+
+    # Base query: Get all tasks for the user
+    tasks = Task.objects.filter(item__user=request.user).select_related(
+        "item", "item__location"
+    )
+
+    if query:
+        tasks = tasks.filter(
+            Q(name__icontains=query)
+            | Q(item__name__icontains=query)
+            | Q(description__icontains=query)
+        )
+
+    context = {
+        "grouping_type": group_by,
+        "form": TaskForm(),
+    }
+
+    if group_by == "none":
+        # Flat list
+        tasks = tasks.order_by("name")
+        context["tasks"] = tasks
+
+    elif group_by == "frequency":
+        # Group by frequency
+        # structure: { "FrequencyLabel": [Task, Task] }
+        tasks = tasks.order_by("frequency", "name")
+        grouped_tasks = defaultdict(list)
+        for task in tasks:
+            label = task.get_frequency_display()
+            grouped_tasks[label].append(task)
+        context["grouped_tasks"] = dict(grouped_tasks)
+
+    else:  # group_by == "item" (default)
+        # Grouping logic: Location -> Item -> Tasks
+        # structure: { "LocationName": { "ItemName": [Task, Task] } }
+        tasks = tasks.order_by("item__location__name", "item__name", "name")
+        grouped_tasks = defaultdict(lambda: defaultdict(list))
+
+        for task in tasks:
+            loc_name = task.item.location.name if task.item.location else "Unassigned"
+            item_name = task.item.name
+            grouped_tasks[loc_name][item_name].append(task)
+
+        # Convert to standard dict for safety
+        final_grouped_tasks = {
+            loc: dict(items) for loc, items in grouped_tasks.items()
+        }
+        context["grouped_tasks"] = final_grouped_tasks
+
+    if request.htmx and query:
+        # Note: HTMX filtering logic might need to be specific if we want partials.
+        # For now, we return the full page which HTMX will parse and swap.
+        pass
+
+    return render(request, "maintenance_list.html", context)
+
+
+@login_required
+def task_create(request):
+    """
+    Creates a new task. Can be triggered from Maintenance page or Item Details.
+    """
+    if request.method == "POST":
+        form = TaskForm(request.POST)
+        if form.is_valid():
+            task = form.save(commit=False)
+            # Verify the item belongs to the user
+            if task.item.user != request.user:
+                 messages.error(request, "You cannot add tasks to items you don't own.")
+                 return redirect("task-management-list")
+            
+            task.save()
+            messages.success(request, f"Task '{task.name}' created for '{task.item.name}'.")
+            
+            # Redirect based on where the user came from? 
+            # For now, default to maintenance list.
+            return redirect("task-management-list")
+        else:
+             # If HTMX, we should return the form with errors
+             pass
+    else:
+        initial_data = {}
+        item_id = request.GET.get("item")
+        if item_id:
+            item = get_object_or_404(Item, pk=item_id, user=request.user)
+            initial_data["item"] = item
+            
+        form = TaskForm(initial=initial_data)
+        # Filter the 'item' dropdown to only show User's items
+        form.fields["item"].queryset = Item.objects.filter(user=request.user)
+
+    return render(request, "components/_task_create_modal.html", {"form": form})
+
+
+@login_required
+def task_update(request, pk):
+    task = get_object_or_404(Task, pk=pk, item__user=request.user)
+
+    if request.method == "POST":
+        form = TaskForm(request.POST, instance=task)
+        if form.is_valid():
+            # Check if item changed and is valid
+            updated_task = form.save(commit=False)
+            if updated_task.item.user != request.user:
+                messages.error(request, "Invalid item selection.")
+                return redirect("task-management-list")
+            
+            updated_task.save()
+            messages.success(request, f"Task '{task.name}' updated.")
+            return redirect("task-management-list")
+    else:
+        form = TaskForm(instance=task)
+        form.fields["item"].queryset = Item.objects.filter(user=request.user)
+
+    return render(request, "components/_task_create_modal.html", {"form": form, "task": task})
+
+
+@login_required
+def task_delete(request, pk):
+    task = get_object_or_404(Task, pk=pk, item__user=request.user)
+
+    if request.method == "POST":
+        task_name = task.name
+        task.delete()
+        messages.success(request, f"Task '{task_name}' deleted.")
+        return redirect("task-management-list")
+    
+    # Optional: Confirmation modal logic if GET
+    return render(request, "components/_task_delete_confirm_modal.html", {"task": task})

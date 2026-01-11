@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block page_title %}
+  Task Inventory
+{% endblock %}
+{% block content %}
+  <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Maintenance Tasks</h2>
+        <!-- Desktop add button -->
+        <div class="d-none d-md-flex">
+            <a href="{% url 'task-create' %}" class="btn btn-green" data-bs-toggle="modal" data-bs-target="#taskCreateModal" hx-get="{% url 'task-create' %}" hx-target="#taskCreateModal .modal-content"><i class="bi bi-plus-lg me-1"></i> Add Task</a>
+        </div>
+    </div>
+
+    <!-- Grouping Toggle & Search -->
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-8">
+            <div class="d-flex justify-content-center mb-3">
+                <div class="btn-group" role="group" aria-label="Grouping Toggle">
+                    <a href="?group_by=item&q={{ request.GET.q }}" class="btn btn-outline-secondary {% if grouping_type == 'item' or not grouping_type %}active{% endif %}">By Item</a>
+                    <a href="?group_by=frequency&q={{ request.GET.q }}" class="btn btn-outline-secondary {% if grouping_type == 'frequency' %}active{% endif %}">By Frequency</a>
+                    <a href="?group_by=none&q={{ request.GET.q }}" class="btn btn-outline-secondary {% if grouping_type == 'none' %}active{% endif %}">No Grouping</a>
+                </div>
+            </div>
+
+            <form hx-get="{% url 'task-management-list' %}" hx-target="#task-list-container" hx-push-url="true" hx-trigger="keyup changed delay:300ms from:input" class="position-relative">
+                <input type="hidden" name="group_by" value="{{ grouping_type|default:'item' }}">
+                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-4 text-muted"></i>
+                <input type="text" name="q" value="{{ request.GET.q }}" class="form-control rounded-pill ps-5 pe-5 search-input" placeholder="Search tasks..." id="search-input" />
+            </form>
+        </div>
+    </div>
+
+    <!-- Task list -->
+    <div id="task-list-container">
+      {% if not grouped_tasks and not tasks %}
+        <div class="alert alert-info text-center">No tasks found. Start adding some!</div>
+      {% endif %}
+
+      {% if grouping_type == 'none' %}
+          {% if tasks %}
+          <div class="card shadow-sm">
+            <ul class="list-group list-group-flush">
+                {% for task in tasks %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold">{{ task.name }}</span> <span class="text-muted small">({{ task.item.name }})</span>
+                            <small class="text-muted d-block">{{ task.get_frequency_display }} 
+                                {% if task.next_due_date %}
+                                    &bull; Due: {{ task.next_due_date }}
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div>
+                            <a href="{% url 'task-update' task.pk %}" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#taskCreateModal" hx-get="{% url 'task-update' task.pk %}" hx-target="#taskCreateModal .modal-content"><i class="bi bi-pencil"></i></a>
+                            <a href="{% url 'task-delete' task.pk %}" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#taskDeleteModal" hx-get="{% url 'task-delete' task.pk %}" hx-target="#taskDeleteModal .modal-content"><i class="bi bi-trash"></i></a>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+
+      {% elif grouping_type == 'frequency' %}
+          {% for frequency, tasks in grouped_tasks.items %}
+            <h5 class="text-secondary mt-4 mb-2 border-bottom pb-2">{{ frequency }}</h5>
+            <div class="card mb-3 shadow-sm">
+                <ul class="list-group list-group-flush">
+                    {% for task in tasks %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-bold">{{ task.name }}</span> <span class="text-muted small">({{ task.item.name }})</span>
+                                <small class="text-muted d-block">
+                                    {% if task.next_due_date %}
+                                        Due: {{ task.next_due_date }}
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <div>
+                                <a href="{% url 'task-update' task.pk %}" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#taskCreateModal" hx-get="{% url 'task-update' task.pk %}" hx-target="#taskCreateModal .modal-content"><i class="bi bi-pencil"></i></a>
+                                <a href="{% url 'task-delete' task.pk %}" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#taskDeleteModal" hx-get="{% url 'task-delete' task.pk %}" hx-target="#taskDeleteModal .modal-content"><i class="bi bi-trash"></i></a>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+          {% endfor %}
+
+      {% else %}
+          <!-- Group by Item (Default) -->
+          {% for location, item_dict in grouped_tasks.items %}
+            <h5 class="text-secondary mt-4 mb-2 border-bottom pb-2">{{ location }}</h5>
+            
+            {% for item_name, tasks in item_dict.items %}
+                <div class="card mb-3 shadow-sm">
+                    <div class="card-header bg-light">
+                        <strong class="text-dark">{{ item_name }}</strong>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        {% for task in tasks %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="fw-bold">{{ task.name }}</span>
+                                    <small class="text-muted d-block">{{ task.get_frequency_display }} 
+                                        {% if task.next_due_date %}
+                                            &bull; Due: {{ task.next_due_date }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div>
+                                    <a href="{% url 'task-update' task.pk %}" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#taskCreateModal" hx-get="{% url 'task-update' task.pk %}" hx-target="#taskCreateModal .modal-content"><i class="bi bi-pencil"></i></a>
+                                    <a href="{% url 'task-delete' task.pk %}" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#taskDeleteModal" hx-get="{% url 'task-delete' task.pk %}" hx-target="#taskDeleteModal .modal-content"><i class="bi bi-trash"></i></a>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+          {% endfor %}
+      {% endif %}
+    </div>
+
+    <!-- Floating Action Button -->
+    <a href="{% url 'task-create' %}" class="btn btn-primary rounded-circle shadow-lg position-fixed d-md-none" style="bottom: 20px; right: 20px; width: 56px; height: 56px;" data-bs-toggle="modal" data-bs-target="#taskCreateModal" hx-get="{% url 'task-create' %}" hx-target="#taskCreateModal .modal-content"><i class="bi bi-plus-lg fs-4 d-flex justify-content-center align-items-center h-100 w-100"></i></a>
+
+    <!-- Task Create/Edit Modal Placeholder -->
+    <div class="modal fade" id="taskCreateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <!-- Content loaded via HTMX -->
+                {% include 'components/_task_create_modal.html' with form=form %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Delete Modal Placeholder -->
+    <div class="modal fade" id="taskDeleteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <!-- Content loaded via HTMX -->
+            </div>
+        </div>
+    </div>
+  </div>
+{% endblock %}

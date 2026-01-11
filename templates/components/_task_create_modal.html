@@ -1,0 +1,17 @@
+
+<form method="POST" action="{% if task %}{% url 'task-update' task.pk %}{% else %}{% url 'task-create' %}{% endif %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="modal-header">
+        <h5 class="modal-title">{% if task %}Edit Task{% else %}Add New Task{% endif %}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+
+    <div class="modal-body">
+        {{ form.as_p }}
+    </div>
+
+    <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">{% if task %}Save Changes{% else %}Create Task{% endif %}</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    </div>
+</form>

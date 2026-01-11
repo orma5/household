@@ -1,5 +1,5 @@
 from django import forms
-from .models import Item, Location
+from .models import Item, Location, Task
 import datetime
 
 
@@ -75,4 +75,29 @@ class ItemForm(forms.ModelForm):
             "receipt_file": forms.ClearableFileInput(attrs={"class": "form-control"}),
             "notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "manufacturer_manual_url": forms.URLInput(attrs={"class": "form-control"}),
+        }
+
+
+class TaskForm(forms.ModelForm):
+    class Meta:
+        model = Task
+        fields = [
+            "name",
+            "description",
+            "item",
+            "frequency",
+            "estimated_hours_to_complete",
+            "next_due_date",
+        ]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "item": forms.Select(attrs={"class": "form-select"}),
+            "frequency": forms.Select(attrs={"class": "form-select"}),
+            "estimated_hours_to_complete": forms.NumberInput(
+                attrs={"class": "form-control", "min": 0}
+            ),
+            "next_due_date": forms.DateInput(
+                attrs={"type": "date", "class": "form-control"}
+            ),
         }
