@@ -10,6 +10,9 @@
         <a href="/" class="mb-3 text-dark text-decoration-none d-flex flex-column align-items-center">
           <i class="bi bi-house-gear-fill fs-3"></i>
           <span class="fs-5 fw-semibold mt-1">Keep-App</span>
+          {% if account %}
+            <span class="small fw-medium text-muted">{{ account.name }}</span>
+          {% endif %}
         </a>
 
         <hr class="text-dark w-100" />

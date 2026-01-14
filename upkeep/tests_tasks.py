@@ -5,17 +5,22 @@ from django.utils import timezone
 import datetime
 from .models import Location, Item, Task
 
+from common.models import Account, Profile
+
 User = get_user_model()
 
 class TaskManagementTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='testuser', password='password')
+        self.account = Account.objects.create(name="Test Household", owner=self.user)
+        self.profile = Profile.objects.create(user=self.user, account=self.account)
         self.client = Client()
         self.client.login(username='testuser', password='password')
         
         self.location = Location.objects.create(
             name="Test Location",
             user=self.user,
+            account=self.account,
             default=True
         )
         
@@ -23,6 +28,7 @@ class TaskManagementTests(TestCase):
             name="Test Item",
             location=self.location,
             user=self.user,
+            account=self.account,
             quantity=1,
             status=Item.ItemStatus.ACTIVE
         )
@@ -47,18 +53,18 @@ class TaskManagementTests(TestCase):
         self.assertEqual(self.task.next_due_date, expected_due_date)
 
     def test_task_snooze(self):
-        initial_due_date = self.task.next_due_date
         url = reverse('task-snooze', args=[self.task.pk])
         response = self.client.post(url)
         
         self.assertEqual(response.status_code, 302)
         
         self.task.refresh_from_db()
-        # Snooze adds 7 days to existing due date
-        expected_due_date = initial_due_date + datetime.timedelta(days=7)
-        self.assertEqual(self.task.next_due_date, expected_due_date)
+        # Snooze sets snoozed_until to today + 7 days
+        expected_snooze_date = timezone.now().date() + datetime.timedelta(days=7)
+        self.assertEqual(self.task.snoozed_until, expected_snooze_date)
+        self.assertEqual(self.task.snooze_count, 1)
         
-        # Ensure it didn't update last_performed
+        # Ensure it didn't update last_performed or next_due_date
         self.assertIsNone(self.task.last_performed)
 
     def test_task_snooze_updates_if_no_due_date(self):
@@ -69,6 +75,6 @@ class TaskManagementTests(TestCase):
         self.client.post(url)
         
         self.task.refresh_from_db()
-        # Should be today + 7 days
-        expected_due_date = timezone.now().date() + datetime.timedelta(days=7)
-        self.assertEqual(self.task.next_due_date, expected_due_date)
+        # Should still be today + 7 days
+        expected_snooze_date = timezone.now().date() + datetime.timedelta(days=7)
+        self.assertEqual(self.task.snoozed_until, expected_snooze_date)

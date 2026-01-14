@@ -25,6 +25,12 @@ class LocationForm(forms.ModelForm):
 
 
 class ItemForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        account = kwargs.pop("account", None)
+        super().__init__(*args, **kwargs)
+        if account:
+            self.fields["location"].queryset = Location.objects.filter(account=account)
+
     class Meta:
         model = Item
         fields = [
@@ -79,6 +85,12 @@ class ItemForm(forms.ModelForm):
 
 
 class TaskForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        account = kwargs.pop("account", None)
+        super().__init__(*args, **kwargs)
+        if account:
+            self.fields["item"].queryset = Item.objects.filter(location__account=account)
+
     class Meta:
         model = Task
         fields = [

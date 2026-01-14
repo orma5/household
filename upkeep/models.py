@@ -11,8 +11,8 @@ class Location(BaseModel):
     zip_code = models.CharField(max_length=10, blank=True, null=True)
     city = models.CharField(max_length=30, blank=True, null=True)
     country_code = models.CharField(max_length=2, blank=True, null=True)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="locations"
+    account = models.ForeignKey(
+        "common.Account", on_delete=models.CASCADE, related_name="locations", null=True
     )
     default = models.BooleanField(default=False)
 
@@ -32,15 +32,12 @@ class Item(BaseModel):
     # Mandatory
     name = models.CharField(max_length=255)
     location = models.ForeignKey(
-        Location, null=True, on_delete=models.SET_NULL, related_name="items"
+        Location, on_delete=models.CASCADE, related_name="items"
     )
     status = models.IntegerField(
         choices=ItemStatus, null=False, default=ItemStatus.ACTIVE
     )
     quantity = models.PositiveIntegerField(default=1)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="items"
-    )
 
     # Optional metadata
     area = models.CharField(max_length=30, blank=True, null=True)

@@ -13,8 +13,21 @@ class BaseModel(models.Model):
         abstract = True
 
 
+class Account(BaseModel):
+    name = models.CharField(max_length=255)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="owned_accounts"
+    )
+
+    def __str__(self):
+        return self.name
+
+
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    account = models.ForeignKey(
+        Account, on_delete=models.SET_NULL, null=True, blank=True, related_name="members"
+    )
     full_name = models.CharField(max_length=255, blank=True)
     profile_picture = models.ImageField(
         upload_to="profile_pictures/", blank=True, null=True

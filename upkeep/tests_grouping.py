@@ -3,19 +3,23 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from .models import Location, Item, Task
 
+from common.models import Account, Profile
+
 User = get_user_model()
 
 class TaskGroupingTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='groupuser', password='password')
+        self.account = Account.objects.create(name="Test Household", owner=self.user)
+        self.profile = Profile.objects.create(user=self.user, account=self.account)
         self.client = Client()
         self.client.login(username='groupuser', password='password')
         
-        self.location = Location.objects.create(name="Home", user=self.user, default=True)
+        self.location = Location.objects.create(name="Home", user=self.user, account=self.account, default=True)
         
-        self.item1 = Item.objects.create(name="Kitchen Fridge", location=self.location, user=self.user, area="Kitchen")
-        self.item2 = Item.objects.create(name="Living Room AC", location=self.location, user=self.user, area="Living Room")
-        self.item3 = Item.objects.create(name="Generic Item", location=self.location, user=self.user) # No area
+        self.item1 = Item.objects.create(name="Kitchen Fridge", location=self.location, user=self.user, account=self.account, area="Kitchen")
+        self.item2 = Item.objects.create(name="Living Room AC", location=self.location, user=self.user, account=self.account, area="Living Room")
+        self.item3 = Item.objects.create(name="Generic Item", location=self.location, user=self.user, account=self.account) # No area
         
         Task.objects.create(name="Clean Coils", item=self.item1, frequency=Task.Frequency.YEARLY)
         Task.objects.create(name="Change Filter", item=self.item2, frequency=Task.Frequency.QUARTERLY)

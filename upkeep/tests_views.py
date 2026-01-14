@@ -5,16 +5,20 @@ from django.utils import timezone
 import datetime
 from .models import Location, Item, Task
 
+from common.models import Account, Profile
+
 User = get_user_model()
 
 class UpkeepViewTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='viewuser', password='password')
+        self.account = Account.objects.create(name="Test Household", owner=self.user)
+        self.profile = Profile.objects.create(user=self.user, account=self.account)
         self.client = Client()
         self.client.login(username='viewuser', password='password')
         
-        self.location = Location.objects.create(name="Home", user=self.user, default=True)
-        self.item = Item.objects.create(name="Toaster", location=self.location, user=self.user)
+        self.location = Location.objects.create(name="Home", user=self.user, account=self.account, default=True)
+        self.item = Item.objects.create(name="Toaster", location=self.location, user=self.user, account=self.account)
 
     def test_task_due_list_filtering(self):
         # Create one due task and one future task

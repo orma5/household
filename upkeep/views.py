@@ -18,18 +18,57 @@ def settings_view(request):
 
     # Get or create profile
     profile, _ = Profile.objects.get_or_create(user=user)
+    account = profile.account
 
-    # Handle profile update
+    # Handle profile and account update
     if request.method == "POST":
-        profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
-        if profile_form.is_valid():
-            profile_form.save()
-            return redirect("settings-view")
-    else:
-        profile_form = ProfileForm(instance=profile)
+        if "update_profile" in request.POST:
+            profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
+            if profile_form.is_valid():
+                profile_form.save()
+                messages.success(request, "Profile updated.")
+                return redirect("settings-view")
+        elif "update_household" in request.POST and account:
+            household_name = request.POST.get("household_name")
+            if household_name:
+                account.name = household_name
+                account.save()
+                messages.success(request, f"Household renamed to {household_name}.")
+                return redirect("settings-view")
+        elif "create_household" in request.POST and not account:
+            household_name = request.POST.get("household_name")
+            if household_name:
+                from common.models import Account
+                new_account = Account.objects.create(name=household_name, owner=user)
+                profile.account = new_account
+                profile.save()
+                messages.success(request, f"Household '{household_name}' created.")
+                return redirect("settings-view")
+        elif "add_member" in request.POST and account:
+            username = request.POST.get("new_username")
+            password = request.POST.get("new_password")
+            email = request.POST.get("new_email", "")
+            
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            if User.objects.filter(username=username).exists():
+                messages.error(request, f"Username '{username}' already exists.")
+            else:
+                new_user = User.objects.create_user(username=username, email=email, password=password)
+                new_profile = Profile.objects.create(user=new_user, account=account)
+                messages.success(request, f"Member '{username}' added to the household.")
+                return redirect("settings-view")
+    
+    profile_form = ProfileForm(instance=profile)
 
     # Handle locations
-    locations = Location.objects.filter(user=user).order_by("-default", "name")
+    locations = []
+    members = []
+    if account:
+        locations = Location.objects.filter(account=account).order_by("-default", "name")
+        members = account.members.select_related('user').all()
+    
     for loc in locations:
         loc.form = LocationForm(instance=loc)
     form = LocationForm()
@@ -41,13 +80,15 @@ def settings_view(request):
             "locations": locations,
             "form": form,
             "profile_form": profile_form,
+            "account": account,
+            "members": members,
         },
     )
 
 
 @login_required
 def location_delete(request, pk):
-    location = get_object_or_404(Location, pk=pk, user=request.user)
+    location = get_object_or_404(Location, pk=pk, account=request.user.profile.account)
 
     if location.default:
         messages.error(request, "The default location cannot be deleted.")
@@ -63,7 +104,7 @@ def location_delete(request, pk):
 
 @login_required
 def switch_location(request, pk):
-    location = get_object_or_404(Location, pk=pk, user=request.user)
+    location = get_object_or_404(Location, pk=pk, account=request.user.profile.account)
     request.session["active_location_id"] = location.id
     messages.success(request, f"Switched to location: {location.name}")
 
@@ -78,7 +119,7 @@ def location_create(request):
         form = LocationForm(request.POST)
         if form.is_valid():
             location = form.save(commit=False)
-            location.user = request.user
+            location.account = request.user.profile.account
             location.default = False  # just to be explicit
             location.save()
             messages.success(request, f"Location '{location.name}' created.")
@@ -90,7 +131,7 @@ def location_create(request):
 
 @login_required
 def location_update(request, pk):
-    location = get_object_or_404(Location, pk=pk, user=request.user)
+    location = get_object_or_404(Location, pk=pk, account=request.user.profile.account)
 
     if request.method == "POST":
         form = LocationForm(request.POST, instance=location)
@@ -106,7 +147,7 @@ def location_update(request, pk):
 
 @login_required
 def item_archive(request, pk):
-    item = get_object_or_404(Item, pk=pk, user=request.user)
+    item = get_object_or_404(Item, pk=pk, location__account=request.user.profile.account)
     if request.method == "POST":
         item.status = Item.ItemStatus.RETIRED
         item.save()
@@ -116,16 +157,17 @@ def item_archive(request, pk):
 
 @login_required
 def item_update(request, pk):
-    item = get_object_or_404(Item, pk=pk, user=request.user)
+    account = request.user.profile.account
+    item = get_object_or_404(Item, pk=pk, location__account=account)
 
     if request.method == "POST":
-        form = ItemForm(request.POST, request.FILES, instance=item)
+        form = ItemForm(request.POST, request.FILES, instance=item, account=account)
         if form.is_valid():
             form.save()
             messages.success(request, f"{item.name} was updated successfully.")
             return redirect("item-list")  # or wherever the item list is shown
     else:
-        form = ItemForm(instance=item)
+        form = ItemForm(instance=item, account=account)
 
     return render(
         request, "components/item_detail_modal.html", {"item": item, "form": form}
@@ -134,7 +176,7 @@ def item_update(request, pk):
 
 @login_required
 def item_delete(request, pk):
-    item = get_object_or_404(Item, pk=pk, user=request.user)
+    item = get_object_or_404(Item, pk=pk, location__account=request.user.profile.account)
 
     if request.method == "POST":
         item_name = item.name
@@ -145,13 +187,13 @@ def item_delete(request, pk):
 
 @login_required
 def item_create(request):
+    account = request.user.profile.account
     if request.method == "POST":
-        form = ItemForm(request.POST, request.FILES)
+        form = ItemForm(request.POST, request.FILES, account=account)
         if form.is_valid():
             item = form.save(commit=False)
             # All new items should have status ACTIVE
             item.status = Item.ItemStatus.ACTIVE
-            item.user = request.user
             item.save()
             messages.success(
                 request,
@@ -168,7 +210,7 @@ def item_create(request):
         active_location_id = request.session.get("active_location_id")
         if active_location_id:
             initial_data["location"] = active_location_id
-        form = ItemForm(initial=initial_data)
+        form = ItemForm(initial=initial_data, account=account)
 
     # Optional: this view can render a standalone page or return a partial if needed
     return render(request, "inventory/item_create.html", {"form": form})
@@ -177,8 +219,9 @@ def item_create(request):
 @login_required
 def item_list(request):
     query = request.GET.get("q", "")
+    account = request.user.profile.account
 
-    items = Item.objects.filter(user=request.user).select_related("location")
+    items = Item.objects.filter(location__account=account).select_related("location")
 
     # Filter by active location
     active_location_id = request.session.get("active_location_id")
@@ -187,7 +230,7 @@ def item_list(request):
     else:
         # Fallback: pick default
         default_loc = (
-            Location.objects.filter(user=request.user)
+            Location.objects.filter(account=account)
             .order_by("-default", "name")
             .first()
         )
@@ -205,7 +248,7 @@ def item_list(request):
     items = items.order_by("area", "name")
 
     for item in items:
-        item.form = ItemForm(instance=item)
+        item.form = ItemForm(instance=item, account=account)
 
     # No longer grouping by location.
     # We can group by Area if desired, or just pass flat list.
@@ -214,7 +257,7 @@ def item_list(request):
 
     context = {
         "items": items,
-        "form": ItemForm(),
+        "form": ItemForm(account=account),
     }
 
     if request.htmx:
@@ -234,9 +277,10 @@ def task_management_list(request):
     """
     query = request.GET.get("q", "")
     group_by = request.GET.get("group_by", "item")
+    account = request.user.profile.account
 
     # Base query: Get all tasks for the user
-    tasks = Task.objects.filter(item__user=request.user).select_related(
+    tasks = Task.objects.filter(item__location__account=account).select_related(
         "item", "item__location"
     )
 
@@ -246,7 +290,7 @@ def task_management_list(request):
         tasks = tasks.filter(item__location_id=active_location_id)
     else:
         default_loc = (
-            Location.objects.filter(user=request.user)
+            Location.objects.filter(account=account)
             .order_by("-default", "name")
             .first()
         )
@@ -263,7 +307,7 @@ def task_management_list(request):
 
     context = {
         "grouping_type": group_by,
-        "form": TaskForm(),
+        "form": TaskForm(account=account),
     }
 
     if group_by == "area":
@@ -313,12 +357,13 @@ def task_create(request):
     """
     Creates a new task. Can be triggered from Maintenance page or Item Details.
     """
+    account = request.user.profile.account
     if request.method == "POST":
-        form = TaskForm(request.POST)
+        form = TaskForm(request.POST, account=account)
         if form.is_valid():
             task = form.save(commit=False)
-            # Verify the item belongs to the user
-            if task.item.user != request.user:
+            # Verify the item belongs to the account
+            if task.item.location.account != account:
                 messages.error(request, "You cannot add tasks to items you don't own.")
                 return redirect("task-management-list")
 
@@ -337,12 +382,12 @@ def task_create(request):
         initial_data = {}
         item_id = request.GET.get("item")
         if item_id:
-            item = get_object_or_404(Item, pk=item_id, user=request.user)
+            item = get_object_or_404(Item, pk=item_id, location__account=account)
             initial_data["item"] = item
 
-        form = TaskForm(initial=initial_data)
-        # Filter the 'item' dropdown to only show User's items in active location
-        items_qs = Item.objects.filter(user=request.user)
+        form = TaskForm(initial=initial_data, account=account)
+        # Filter the 'item' dropdown to only show Account's items in active location
+        items_qs = Item.objects.filter(location__account=account)
         active_location_id = request.session.get("active_location_id")
         if active_location_id:
             items_qs = items_qs.filter(location_id=active_location_id)
@@ -353,14 +398,15 @@ def task_create(request):
 
 @login_required
 def task_update(request, pk):
-    task = get_object_or_404(Task, pk=pk, item__user=request.user)
+    account = request.user.profile.account
+    task = get_object_or_404(Task, pk=pk, item__location__account=account)
 
     if request.method == "POST":
-        form = TaskForm(request.POST, instance=task)
+        form = TaskForm(request.POST, instance=task, account=account)
         if form.is_valid():
             # Check if item changed and is valid
             updated_task = form.save(commit=False)
-            if updated_task.item.user != request.user:
+            if updated_task.item.location.account != account:
                 messages.error(request, "Invalid item selection.")
                 return redirect("task-management-list")
 
@@ -368,8 +414,8 @@ def task_update(request, pk):
             messages.success(request, f"Task '{task.name}' updated.")
             return redirect("task-management-list")
     else:
-        form = TaskForm(instance=task)
-        items_qs = Item.objects.filter(user=request.user)
+        form = TaskForm(instance=task, account=account)
+        items_qs = Item.objects.filter(location__account=account)
         active_location_id = request.session.get("active_location_id")
         if active_location_id:
             items_qs = items_qs.filter(location_id=active_location_id)
@@ -382,7 +428,7 @@ def task_update(request, pk):
 
 @login_required
 def task_delete(request, pk):
-    task = get_object_or_404(Task, pk=pk, item__user=request.user)
+    task = get_object_or_404(Task, pk=pk, item__location__account=request.user.profile.account)
 
     if request.method == "POST":
         task_name = task.name
@@ -396,7 +442,7 @@ def task_delete(request, pk):
 
 @login_required
 def task_complete(request, pk):
-    task = get_object_or_404(Task, pk=pk, item__user=request.user)
+    task = get_object_or_404(Task, pk=pk, item__location__account=request.user.profile.account)
     if request.method == "POST":
         task.last_performed = timezone.now().date()
         # Force recalculation of next due date
@@ -423,7 +469,7 @@ def task_complete(request, pk):
 
 @login_required
 def task_snooze(request, pk):
-    task = get_object_or_404(Task, pk=pk, item__user=request.user)
+    task = get_object_or_404(Task, pk=pk, item__location__account=request.user.profile.account)
     if request.method == "POST":
         # Snooze for exactly 7 days from today
         task.snoozed_until = timezone.now().date() + datetime.timedelta(days=7)
@@ -444,6 +490,7 @@ def task_due_list(request):
     """
 
     today = timezone.now().date()
+    account = request.user.profile.account
 
     # Task is due if:
 
@@ -452,7 +499,7 @@ def task_due_list(request):
     # 2. It is NOT snoozed and it is due: snoozed_until IS NULL AND next_due_date <= today
 
     tasks = (
-        Task.objects.filter(item__user=request.user)
+        Task.objects.filter(item__location__account=account)
         .filter(
             Q(snoozed_until__lte=today)
             | Q(snoozed_until__isnull=True, next_due_date__lte=today)
@@ -482,7 +529,7 @@ def task_due_list(request):
         # Existing pattern uses default location if none selected.
 
         default_loc = (
-            Location.objects.filter(user=request.user)
+            Location.objects.filter(account=account)
             .order_by("-default", "name")
             .first()
         )
@@ -491,6 +538,10 @@ def task_due_list(request):
             tasks = tasks.filter(item__location=default_loc)
 
             request.session["active_location_id"] = default_loc.id
+
+    context = {"tasks": tasks, "today": today}
+
+    return render(request, "task_due_list.html", context)
 
     context = {"tasks": tasks, "today": today}
 

@@ -10,17 +10,21 @@ from upkeep.models import Item, Task, Location
 def home(request):
     # 1. Get Active Location
     # We rely on the logic that populates the session or defaults
+    account = request.user.profile.account
+    if not account:
+        return render(request, "home.html", {"no_account": True})
+
     active_location_id = request.session.get("active_location_id")
     active_location = None
     
     if active_location_id:
-        active_location = Location.objects.filter(id=active_location_id, user=request.user).first()
+        active_location = Location.objects.filter(id=active_location_id, account=account).first()
     
     # Fallback if session is empty or invalid
     if not active_location:
-        active_location = Location.objects.filter(user=request.user, default=True).first()
+        active_location = Location.objects.filter(account=account, default=True).first()
         if not active_location:
-             active_location = Location.objects.filter(user=request.user).first()
+             active_location = Location.objects.filter(account=account).first()
 
     context = {}
     

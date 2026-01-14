@@ -1,10 +1,10 @@
 from .models import Location
 
 def active_location(request):
-    if not request.user.is_authenticated:
+    if not request.user.is_authenticated or not hasattr(request.user, 'profile') or not request.user.profile.account:
         return {}
 
-    user_locations = Location.objects.filter(user=request.user).order_by("-default", "name")
+    user_locations = Location.objects.filter(account=request.user.profile.account).order_by("-default", "name")
     
     if not user_locations.exists():
         return {"user_locations": [], "active_location": None}
@@ -28,4 +28,5 @@ def active_location(request):
     return {
         "user_locations": user_locations,
         "active_location": active_location,
+        "account": request.user.profile.account,
     }
