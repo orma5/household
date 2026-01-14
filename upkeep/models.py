@@ -2,7 +2,6 @@ import datetime
 from django.db import models
 from common.models import BaseModel
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.conf import settings
 
 
 class Location(BaseModel):

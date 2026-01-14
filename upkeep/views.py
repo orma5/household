@@ -56,7 +56,7 @@ def settings_view(request):
                 messages.error(request, f"Username '{username}' already exists.")
             else:
                 new_user = User.objects.create_user(username=username, email=email, password=password)
-                new_profile = Profile.objects.create(user=new_user, account=account)
+                Profile.objects.create(user=new_user, account=account)
                 messages.success(request, f"Member '{username}' added to the household.")
                 return redirect("settings-view")
     
