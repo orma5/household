@@ -91,6 +91,19 @@ class TaskForm(forms.ModelForm):
         if account:
             self.fields["item"].queryset = Item.objects.filter(location__account=account)
 
+    def clean_description(self):
+        description = self.cleaned_data.get("description")
+        if description:
+            if "## Tools & Parts" not in description:
+                raise forms.ValidationError(
+                    "Description must contain the header '## Tools & Parts'"
+                )
+            if "## Steps" not in description:
+                raise forms.ValidationError(
+                    "Description must contain the header '## Steps'"
+                )
+        return description
+
     class Meta:
         model = Task
         fields = [
@@ -105,7 +118,13 @@ class TaskForm(forms.ModelForm):
         ]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
-            "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "description": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 10,
+                    "placeholder": "## Tools & Parts\n- Hammer\n- Nails\n\n## Steps\n1. Step one\n2. Step two",
+                }
+            ),
             "item": forms.Select(attrs={"class": "form-select"}),
             "frequency": forms.Select(attrs={"class": "form-select"}),
             "estimated_hours_to_complete": forms.NumberInput(
@@ -120,4 +139,7 @@ class TaskForm(forms.ModelForm):
             "snooze_count": forms.NumberInput(
                 attrs={"class": "form-control", "min": 0}
             ),
+        }
+        help_texts = {
+            "description": "Required format: Must include '## Tools & Parts' and '## Steps' headers."
         }

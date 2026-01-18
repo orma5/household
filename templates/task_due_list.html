@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load upkeep_tags %}
 {% block page_title %}
   ToDo
 {% endblock %}
@@ -29,13 +30,13 @@
                             <h6 class="card-subtitle mb-3 text-muted">
                                 <i class="bi bi-box-seam me-1"></i> {{ task.item.name }}
                             </h6>
-                            <p class="card-text small text-secondary">
+                            <div class="card-text small text-secondary markdown-content">
                                 {% if task.description %}
-                                    {{ task.description|truncatechars:100 }}
+                                    {{ task.description|markdownify }}
                                 {% else %}
                                     <em>No description provided.</em>
                                 {% endif %}
-                            </p>
+                            </div>
                             
                             {% if task.item.location or task.snooze_count > 0 %}
                             <div class="mb-3 d-flex justify-content-between align-items-center">
