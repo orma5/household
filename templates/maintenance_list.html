@@ -50,6 +50,9 @@
                                     {% if task.next_due_date %}
                                         &bull; Due: {{ task.next_due_date }}
                                     {% endif %}
+                                    {% if task.estimated_hours_to_complete %}
+                                        &bull; <i class="bi bi-stopwatch"></i> {{ task.estimated_hours_to_complete }}h
+                                    {% endif %}
                                 </small>
                             </div>
                             <div>
@@ -74,6 +77,9 @@
                                 <small class="text-muted d-block">
                                     {% if task.next_due_date %}
                                         Due: {{ task.next_due_date }}
+                                    {% endif %}
+                                    {% if task.estimated_hours_to_complete %}
+                                        {% if task.next_due_date %}&bull; {% endif %}<i class="bi bi-stopwatch"></i> {{ task.estimated_hours_to_complete }}h
                                     {% endif %}
                                 </small>
                             </div>
@@ -102,6 +108,9 @@
                                 <small class="text-muted d-block">{{ task.get_frequency_display }} 
                                     {% if task.next_due_date %}
                                         &bull; Due: {{ task.next_due_date }}
+                                    {% endif %}
+                                    {% if task.estimated_hours_to_complete %}
+                                        &bull; <i class="bi bi-stopwatch"></i> {{ task.estimated_hours_to_complete }}h
                                     {% endif %}
                                 </small>
                             </div>
