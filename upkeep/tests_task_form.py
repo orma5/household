@@ -1,6 +1,6 @@
 from django.test import TestCase
 from .forms import TaskForm
-from .models import Item, Location, Task
+from .models import Item, Location
 from common.models import Account
 from django.contrib.auth import get_user_model
 import datetime
