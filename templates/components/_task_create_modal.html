@@ -1,5 +1,5 @@
 
-<form method="POST" action="{% if task %}{% url 'task-update' task.pk %}{% else %}{% url 'task-create' %}{% endif %}" enctype="multipart/form-data">
+<form method="POST" action="{% if task %}{% url 'task-update' task.pk %}{% else %}{% url 'task-create' %}{% endif %}" hx-post="{% if task %}{% url 'task-update' task.pk %}{% else %}{% url 'task-create' %}{% endif %}" hx-target="#taskCreateModal .modal-content" hx-swap="innerHTML" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="modal-header">
         <h5 class="modal-title">{% if task %}Edit Task{% else %}Add New Task{% endif %}</h5>

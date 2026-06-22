@@ -5,7 +5,9 @@ from django.db.models.functions import Coalesce, Greatest
 from .models import Task, Item, Location
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
+from django.urls import reverse
 from django.contrib import messages
+from django_htmx.http import HttpResponseClientRedirect
 from .forms import ItemForm, LocationForm, TaskForm
 from common.forms import ProfileForm
 from common.models import Profile
@@ -374,6 +376,8 @@ def task_create(request):
 
             # Redirect based on where the user came from?
             # For now, default to maintenance list.
+            if request.htmx:
+                return HttpResponseClientRedirect(reverse("task-management-list"))
             return redirect("task-management-list")
         else:
             # If HTMX, we should return the form with errors
@@ -412,6 +416,8 @@ def task_update(request, pk):
 
             updated_task.save()
             messages.success(request, f"Task '{task.name}' updated.")
+            if request.htmx:
+                return HttpResponseClientRedirect(reverse("task-management-list"))
             return redirect("task-management-list")
     else:
         form = TaskForm(instance=task, account=account)
@@ -453,13 +459,12 @@ def task_complete(request, pk):
         task.save()
         messages.success(request, f"Task '{task.name}' marked as completed.")
 
-        if request.htmx:
-            from django.http import HttpResponse
-
-            return HttpResponse("")
-
         # Redirect to where the user came from
-        next_url = request.META.get("HTTP_REFERER", "task-due-list")
+        next_url = request.META.get("HTTP_REFERER") or reverse("task-due-list")
+
+        if request.htmx:
+            return HttpResponseClientRedirect(next_url)
+
         return redirect(next_url)
 
     # If GET, technically we shouldn't do anything or show a confirmation?
