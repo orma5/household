@@ -6,7 +6,7 @@ certifi==2026.1.4
 charset-normalizer==3.4.4
 cyclonedx-python-lib==11.6.0
 defusedxml==0.7.1
-Django==5.2.15
+Django==5.2.16
 django-environ==0.12.0
 django-htmx==1.23.2
 filelock==3.20.3
@@ -19,7 +19,7 @@ mdurl==0.1.2
 msgpack==1.2.1
 packageurl-python==0.17.6
 packaging==25.0
-pillow==12.2.0
+pillow==12.3.0
 pip-api==0.0.34
 pip-requirements-parser==32.0.1
 pip_audit==2.10.0
