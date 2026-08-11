@@ -33,7 +33,7 @@ Django 6.1 monolith with HTMX (`django-htmx`) for interactivity and server-rende
 
 Apps:
 - `core/` — project wiring only: `urls.py` (root URLConf), `asgi.py`/`wsgi.py`. No models or views of its own.
-- `common/` — cross-cutting: `BaseModel` (abstract base with `created_at`/`updated_at`/`created_by`), `Account`, `Profile`, auth-adjacent views/urls (login lives in `core/urls.py` directly).
+- `common/` — cross-cutting: `BaseModel` (abstract base with `created_at`/`updated_at`/`created_by`), `Account`, `Profile`, the tenant helpers `get_profile`/`get_account`, the dashboard view, and `serve_upload` (see Uploads). Login lives in `core/urls.py` directly.
 - `upkeep/` — the actual domain app: `Location`, `Item`, `Task` models, all views, forms, templatetags.
 - `settings/` — see below.
 
@@ -44,6 +44,10 @@ Resolve the tenant with `common.models.get_account(user)` (it tolerates a missin
 **Active location pattern:** the app is single-active-location, not multi-select. `upkeep.context_processors.active_location` (registered in `settings/common.py`) runs on every request and injects `active_location`, `user_locations`, and `account` into template context, backed by `request.session["active_location_id"]`. Any view listing/creating `Item`/`Task` data must filter by the active location itself — the context processor does not do this for view logic, only for template globals (nav/selector). Both the context processor and the views resolve it through `upkeep.selectors.get_active_location(request)`, which validates the session id against the account and repairs a stale one; do not re-implement the fallback inline.
 
 **Models:** new domain models should extend `common.models.BaseModel` unless there's a specific reason not to (it gives audit fields for free).
+
+**Uploads:** user files (`Item.receipt_file`, `Profile.profile_picture`) are served by the app at `/media/<path>` via `common.views.serve_upload`, not by the reverse proxy. `django.conf.urls.static` is deliberately not used — it silently no-ops when `DEBUG` is False, which is why uploads had no URL at all in the deployed environments. `serve_upload` resolves each path back to the row that owns it and serves only files belonging to the requester's account; anything no row claims 404s, and refusals are 404 rather than 403 so the endpoint doesn't confirm which paths exist.
+
+Adding a new `FileField`/`ImageField` therefore means adding its ownership rule to `common.views._may_access_upload` — otherwise the file is unreachable by design.
 
 ## Settings
 
@@ -60,7 +64,7 @@ Env vars are read from a root `.env` file via `django-environ` (see `settings/co
 
 Django's built-in test runner, split into multiple files per app by concern rather than one `tests.py`:
 - `upkeep/tests_models.py`, `tests_views.py`, `tests_tasks.py`, `tests_grouping.py`, `tests_task_form.py`, `tests_tenancy.py`, `tests_active_location.py`
-- `common/tests_profiles.py`
+- `common/tests_profiles.py`, `tests_media.py`
 
 When adding tests for a new concern, prefer a new `tests_<concern>.py` file over growing an existing one, matching this pattern.
 

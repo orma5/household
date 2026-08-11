@@ -11,7 +11,7 @@ A self-hosted Django app for tracking household items and their recurring mainte
 
 ## Tech stack
 
-- Backend: Python 3.13, Django 5.2
+- Backend: Python 3.13, Django 6.1
 - Frontend: Django templates + HTMX, Bootstrap 5 (no JS framework, no SPA)
 - Database: PostgreSQL (`psycopg`)
 - Server: Gunicorn (prod), Django dev server (local)
@@ -66,4 +66,31 @@ For working conventions and architecture notes aimed at AI coding agents, see [`
 
 ## Deployment
 
-The app is containerized (see `Dockerfile`, Python 3.13 slim + Gunicorn). `.github/workflows/homelab-build-push.yml` lints and audits every push, then builds and pushes a multi-arch image to a private registry for self-hosted deployment.
+The app is containerized (see `Dockerfile`, Python 3.13 slim + Gunicorn). `.github/workflows/homelab-build-push.yml` lints, tests and audits every push, then builds and pushes a multi-arch image to a private registry for self-hosted deployment.
+
+### What the container expects
+
+**Runs as an unprivileged user** (`appuser`, uid 10001), so any directory it writes to must be writable by that uid.
+
+**Two volumes**, both of which the container writes to:
+
+| Mount | Holds | Notes |
+|---|---|---|
+| `/app/assets` | collected static files | `STATIC_ROOT`. Share with the reverse proxy if it serves `/static/` itself. |
+| `/app/media` | user uploads (receipts, profile pictures) | `MEDIA_ROOT`. Without it, uploads are lost on every redeploy. |
+
+`collectstatic` runs **on every container start**, not only at build. When `/app/assets` is a volume, the volume is mounted over the image's copy of that directory, and Docker only seeds a volume from the image when the volume is empty — so a build-time-only collect would leave an existing volume frozen on its old contents.
+
+A volume created fresh inherits `appuser` ownership from the image. A volume that predates the switch to a non-privileged user is still owned by root and must be handed over once, or the container will fail to start:
+
+```bash
+docker run --rm -v <volume_name>:/v alpine chown -R 10001:10001 /v
+```
+
+**Environment:** `SECRET_KEY` and the `DATABASE_*` vars are required; `DJANGO_SETTINGS_MODULE` defaults to `settings.prod` in the image. `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` and `MEDIA_ROOT` are optional overrides.
+
+**Uploads are served by the app**, not the reverse proxy — `/media/` is access-controlled per account, so don't add a proxy rule that bypasses it. Migrations are not run automatically:
+
+```bash
+docker exec <container> python manage.py migrate
+```
