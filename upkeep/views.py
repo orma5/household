@@ -3,7 +3,10 @@ from collections import defaultdict
 from functools import wraps
 
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.db.models.functions import Coalesce, Greatest
 from django.shortcuts import get_object_or_404, redirect, render
@@ -14,7 +17,7 @@ from django.views.decorators.http import require_POST
 from django_htmx.http import HttpResponseClientRedirect
 
 from common.forms import ProfileForm
-from common.models import Profile, get_account
+from common.models import Account, Profile, get_account, get_profile
 
 from .forms import ItemForm, LocationForm, TaskForm
 from .models import Item, Location, Task
@@ -59,93 +62,113 @@ def _scope_item_choices(form, request, account):
     form.fields["item"].queryset = items
 
 
+# Each of these handles one action on the settings page. They return a redirect
+# when the action completed, or None to fall through and re-render the page with
+# whatever message they queued.
+
+
+def _rename_household(request, account):
+    name = request.POST.get("household_name")
+    if not name:
+        messages.error(request, "Household name cannot be empty.")
+        return None
+
+    account.name = name
+    account.save()
+    messages.success(request, f"Household renamed to {name}.")
+    return redirect("settings-view")
+
+
+def _create_household(request, profile):
+    name = request.POST.get("household_name")
+    if not name:
+        messages.error(request, "Household name cannot be empty.")
+        return None
+
+    profile.account = Account.objects.create(name=name, owner=request.user)
+    profile.save()
+    messages.success(request, f"Household '{name}' created.")
+    return redirect("settings-view")
+
+
+def _add_member(request, account):
+    if account.owner_id != request.user.id:
+        messages.error(request, "Only the household owner can add members.")
+        return redirect("settings-view")
+
+    User = get_user_model()
+    username = request.POST.get("new_username")
+    password = request.POST.get("new_password")
+    email = request.POST.get("new_email", "")
+
+    if User.objects.filter(username=username).exists():
+        messages.error(request, f"Username '{username}' already exists.")
+        return None
+
+    try:
+        validate_password(password)
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+        return None
+
+    new_user = User.objects.create_user(
+        username=username, email=email, password=password
+    )
+    Profile.objects.create(user=new_user, account=account)
+    messages.success(request, f"Member '{username}' added to the household.")
+    return redirect("settings-view")
+
+
 @login_required
 def settings_view(request):
-    user = request.user
-
-    # Get or create profile
-    profile, _ = Profile.objects.get_or_create(user=user)
+    profile = get_profile(request.user)
     account = profile.account
 
-    # Set when a submission fails validation, so the bound form (and its errors)
-    # survives to the render below instead of being replaced by a blank one.
+    # Stays None unless a profile submission failed validation, in which case the
+    # bound form carries its errors through to the render below.
     profile_form = None
 
-    # Handle profile and account update
     if request.method == "POST":
+        response = None
+
         if "update_profile" in request.POST:
+            # Inline rather than extracted: this is the one action whose form has
+            # to outlive the request handling.
             profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
             if profile_form.is_valid():
                 profile_form.save()
                 messages.success(request, "Profile updated.")
-                return redirect("settings-view")
+                response = redirect("settings-view")
         elif "update_household" in request.POST and account:
-            household_name = request.POST.get("household_name")
-            if household_name:
-                account.name = household_name
-                account.save()
-                messages.success(request, f"Household renamed to {household_name}.")
-                return redirect("settings-view")
-            else:
-                messages.error(request, "Household name cannot be empty.")
+            response = _rename_household(request, account)
         elif "create_household" in request.POST and not account:
-            household_name = request.POST.get("household_name")
-            if household_name:
-                from common.models import Account
-                new_account = Account.objects.create(name=household_name, owner=user)
-                profile.account = new_account
-                profile.save()
-                messages.success(request, f"Household '{household_name}' created.")
-                return redirect("settings-view")
-            else:
-                messages.error(request, "Household name cannot be empty.")
+            response = _create_household(request, profile)
         elif "add_member" in request.POST and account:
-            if account.owner_id != user.id:
-                messages.error(request, "Only the household owner can add members.")
-                return redirect("settings-view")
+            response = _add_member(request, account)
 
-            username = request.POST.get("new_username")
-            password = request.POST.get("new_password")
-            email = request.POST.get("new_email", "")
+        if response:
+            return response
 
-            from django.contrib.auth import get_user_model
-            from django.contrib.auth.password_validation import validate_password
-            from django.core.exceptions import ValidationError
-            User = get_user_model()
-
-            if User.objects.filter(username=username).exists():
-                messages.error(request, f"Username '{username}' already exists.")
-            else:
-                try:
-                    validate_password(password)
-                except ValidationError as e:
-                    messages.error(request, " ".join(e.messages))
-                else:
-                    new_user = User.objects.create_user(username=username, email=email, password=password)
-                    Profile.objects.create(user=new_user, account=account)
-                    messages.success(request, f"Member '{username}' added to the household.")
-                    return redirect("settings-view")
-    
     if profile_form is None:
         profile_form = ProfileForm(instance=profile)
 
-    # Handle locations
     locations = []
     members = []
     if account:
-        locations = Location.objects.filter(account=account).order_by("-default", "name")
-        members = account.members.select_related('user').all()
-    
+        locations = Location.objects.filter(account=account).order_by(
+            "-default", "name"
+        )
+        members = account.members.select_related("user").all()
+
     for loc in locations:
         loc.form = LocationForm(instance=loc)
-    form = LocationForm()
 
     return render(
         request,
         "settings.html",
         {
             "locations": locations,
-            "form": form,
+            "form": LocationForm(),
             "profile_form": profile_form,
             "account": account,
             "members": members,
