@@ -1,6 +1,11 @@
-from .common import *  # noqa
+import tempfile
+
+from .common import *
 
 DEBUG = False
+
+# Keep uploads made by tests out of the working tree.
+MEDIA_ROOT = tempfile.mkdtemp()
 
 LOGGING = {
     'version': 1,

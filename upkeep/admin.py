@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import Item, Task, Location
+
+from .models import Item, Location, Task
+
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):

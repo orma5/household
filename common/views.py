@@ -1,33 +1,27 @@
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Count, Q
-from django.utils import timezone
 from datetime import timedelta
-from upkeep.models import Item, Task, Location
+
+from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Q, Sum
+from django.shortcuts import render
+from django.utils import timezone
+
+from upkeep.models import Item, Task
+from upkeep.selectors import get_active_location
+
+from .models import get_account
 
 
 @login_required
 def home(request):
-    # 1. Get Active Location
-    # We rely on the logic that populates the session or defaults
-    account = request.user.profile.account
+    account = get_account(request.user)
     if not account:
         return render(request, "home.html", {"no_account": True})
 
-    active_location_id = request.session.get("active_location_id")
-    active_location = None
-    
-    if active_location_id:
-        active_location = Location.objects.filter(id=active_location_id, account=account).first()
-    
-    # Fallback if session is empty or invalid
-    if not active_location:
-        active_location = Location.objects.filter(account=account, default=True).first()
-        if not active_location:
-             active_location = Location.objects.filter(account=account).first()
+    active_location = get_active_location(request)
 
     context = {}
-    
+
+
     if active_location:
         today = timezone.now().date()
         week_from_now = today + timedelta(days=7)

@@ -1,9 +1,12 @@
+
+from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
+
+from common.models import Account
+
 from .forms import TaskForm
 from .models import Item, Location
-from common.models import Account
-from django.contrib.auth import get_user_model
-import datetime
 
 User = get_user_model()
 
@@ -20,7 +23,7 @@ class TaskFormTests(TestCase):
             "description": "## Tools & Parts\nHammer\n## Steps\nHit it.",
             "item": self.item.pk,
             "frequency": 7,
-            "next_due_date": datetime.date.today()
+            "next_due_date": timezone.localdate()
         }
         form = TaskForm(data=data, account=self.account)
         self.assertTrue(form.is_valid(), form.errors)
@@ -31,7 +34,7 @@ class TaskFormTests(TestCase):
             "description": "Just some text",
             "item": self.item.pk,
             "frequency": 7,
-            "next_due_date": datetime.date.today()
+            "next_due_date": timezone.localdate()
         }
         form = TaskForm(data=data, account=self.account)
         self.assertFalse(form.is_valid())
@@ -44,7 +47,7 @@ class TaskFormTests(TestCase):
             "description": "## Tools & Parts\nStuff",
             "item": self.item.pk,
             "frequency": 7,
-            "next_due_date": datetime.date.today()
+            "next_due_date": timezone.localdate()
         }
         form = TaskForm(data=data, account=self.account)
         self.assertFalse(form.is_valid())

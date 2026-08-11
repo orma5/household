@@ -1,6 +1,7 @@
-from django.test import TestCase
 from django.contrib.auth import get_user_model
-from common.models import Profile, Account
+from django.test import TestCase
+
+from common.models import Account, Profile
 
 User = get_user_model()
 
@@ -17,8 +18,8 @@ class ProfileTests(TestCase):
     def test_profile_auto_creation_logic_in_views(self):
         # We check if the settings view correctly handles profile creation
         # (Based on the logic in upkeep/views.py where it does get_or_create)
-        from django.urls import reverse
         from django.test import Client
+        from django.urls import reverse
         
         client = Client()
         client.login(username='profileuser', password='password')

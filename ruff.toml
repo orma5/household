@@ -1,0 +1,3 @@
+# Django generates the files under */migrations/ — lint findings there are not
+# actionable. Everything else runs on ruff's default rule selection.
+extend-exclude = ["*/migrations/*"]
