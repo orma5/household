@@ -112,10 +112,16 @@
           <div class="col-md-6 mb-3">
             <label for="{{ profile_form.full_name.id_for_label }}" class="form-label">Full Name</label>
             {{ profile_form.full_name }}
+            {% for error in profile_form.full_name.errors %}
+              <div class="text-danger small mt-1">{{ error }}</div>
+            {% endfor %}
           </div>
           <div class="col-md-6 mb-3">
             <label for="{{ profile_form.profile_picture.id_for_label }}" class="form-label">Profile Picture</label>
             {{ profile_form.profile_picture }}
+            {% for error in profile_form.profile_picture.errors %}
+              <div class="text-danger small mt-1">{{ error }}</div>
+            {% endfor %}
           </div>
         </div>
         <button type="submit" name="update_profile" class="btn btn-primary">Update Profile</button>
