@@ -67,6 +67,10 @@ def settings_view(request):
     profile, _ = Profile.objects.get_or_create(user=user)
     account = profile.account
 
+    # Set when a submission fails validation, so the bound form (and its errors)
+    # survives to the render below instead of being replaced by a blank one.
+    profile_form = None
+
     # Handle profile and account update
     if request.method == "POST":
         if "update_profile" in request.POST:
@@ -82,6 +86,8 @@ def settings_view(request):
                 account.save()
                 messages.success(request, f"Household renamed to {household_name}.")
                 return redirect("settings-view")
+            else:
+                messages.error(request, "Household name cannot be empty.")
         elif "create_household" in request.POST and not account:
             household_name = request.POST.get("household_name")
             if household_name:
@@ -91,6 +97,8 @@ def settings_view(request):
                 profile.save()
                 messages.success(request, f"Household '{household_name}' created.")
                 return redirect("settings-view")
+            else:
+                messages.error(request, "Household name cannot be empty.")
         elif "add_member" in request.POST and account:
             if account.owner_id != user.id:
                 messages.error(request, "Only the household owner can add members.")
@@ -118,7 +126,8 @@ def settings_view(request):
                     messages.success(request, f"Member '{username}' added to the household.")
                     return redirect("settings-view")
     
-    profile_form = ProfileForm(instance=profile)
+    if profile_form is None:
+        profile_form = ProfileForm(instance=profile)
 
     # Handle locations
     locations = []
