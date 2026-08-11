@@ -8,9 +8,12 @@ from .common import *
 
 DEBUG = False
 
-# Permissive by default because the reverse proxy owns host routing and k8s
-# probes address the pod directly. Set the env var to restrict it.
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
+# Anything addressing the app by raw container/pod IP (a k8s httpGet probe, for
+# example) gets a 400 under this default and must either send a matching Host
+# header or be added via the env var.
+ALLOWED_HOSTS = env.list(
+    "ALLOWED_HOSTS", default=[".dkms.se", "localhost", "127.0.0.1"]
+)
 
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["https://*.dkms.se"])
 
