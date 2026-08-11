@@ -1,9 +1,11 @@
-from django.test import TestCase
-from django.contrib.auth import get_user_model
-from upkeep.models import Location, Item
 import datetime
 
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.utils import timezone
+
 from common.models import Account, Profile
+from upkeep.models import Item, Location
 
 User = get_user_model()
 
@@ -35,8 +37,8 @@ class UpkeepModelTests(TestCase):
 
     def test_item_warranty(self):
         location = Location.objects.create(name="Kitchen", account=self.account)
-        future_date = datetime.date.today() + datetime.timedelta(days=365)
-        past_date = datetime.date.today() - datetime.timedelta(days=1)
+        future_date = timezone.localdate() + datetime.timedelta(days=365)
+        past_date = timezone.localdate() - datetime.timedelta(days=1)
 
         item_ok = Item.objects.create(
             name="Fridge",

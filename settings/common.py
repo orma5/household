@@ -1,6 +1,7 @@
-import environ
 import os
 from pathlib import Path
+
+import environ
 
 # Initialise environment variables
 env = environ.Env()
@@ -103,5 +104,13 @@ STATIC_ROOT = os.path.join(BASE_DIR, "assets")
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
+
+# User uploads (Item.receipt_file, Profile.profile_picture). Defined here rather
+# than per-environment: without it the deployed environments fall back to
+# MEDIA_ROOT="" and scatter uploads across the process working directory.
+# In a container this path must be a mounted volume or uploads die on redeploy.
+MEDIA_URL = "/media/"
+
+MEDIA_ROOT = env("MEDIA_ROOT", default=BASE_DIR / "media")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

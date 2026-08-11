@@ -1,19 +1,21 @@
+from typing import ClassVar
+
 from django import forms
-from .models import Item, Location, Task
-import datetime
+
+from .models import Item, Location, Task, max_purchase_year
 
 
 class LocationForm(forms.ModelForm):
     class Meta:
         model = Location
-        fields = [
+        fields: ClassVar = [
             "name",
             "address",
             "zip_code",
             "city",
             "country_code",
         ]
-        widgets = {
+        widgets: ClassVar = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "address": forms.TextInput(attrs={"class": "form-control"}),
             "zip_code": forms.TextInput(attrs={"class": "form-control"}),
@@ -33,7 +35,7 @@ class ItemForm(forms.ModelForm):
 
     class Meta:
         model = Item
-        fields = [
+        fields: ClassVar = [
             # Required
             "name",
             "location",
@@ -53,7 +55,7 @@ class ItemForm(forms.ModelForm):
             "end_of_service_date",
         ]
 
-        widgets = {
+        widgets: ClassVar = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "location": forms.Select(attrs={"class": "form-select"}),
             "quantity": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
@@ -69,7 +71,7 @@ class ItemForm(forms.ModelForm):
                 attrs={
                     "class": "form-control",
                     "min": 1900,
-                    "max": datetime.datetime.now().year + 1,
+                    "max": max_purchase_year(),
                 }
             ),
             "warranty_expiration": forms.DateInput(
@@ -106,7 +108,7 @@ class TaskForm(forms.ModelForm):
 
     class Meta:
         model = Task
-        fields = [
+        fields: ClassVar = [
             "name",
             "description",
             "item",
@@ -114,7 +116,7 @@ class TaskForm(forms.ModelForm):
             "estimated_hours_to_complete",
             "next_due_date",
         ]
-        widgets = {
+        widgets: ClassVar = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(
                 attrs={
@@ -132,6 +134,6 @@ class TaskForm(forms.ModelForm):
                 attrs={"type": "date", "class": "form-control"}
             ),
         }
-        help_texts = {
+        help_texts: ClassVar = {
             "description": "Required format: Must include '## Tools & Parts' and '## Steps' headers."
         }

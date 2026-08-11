@@ -1,11 +1,13 @@
-from django.test import TestCase, Client
-from django.urls import reverse
-from django.contrib.auth import get_user_model
-from django.utils import timezone
 import datetime
-from .models import Location, Item, Task
+
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase
+from django.urls import reverse
+from django.utils import timezone
 
 from common.models import Account, Profile
+
+from .models import Item, Location, Task
 
 User = get_user_model()
 
@@ -34,7 +36,7 @@ class TaskManagementTests(TestCase):
             name="Test Task",
             item=self.item,
             frequency=Task.Frequency.WEEKLY, # 7 days
-            next_due_date=datetime.date.today()
+            next_due_date=timezone.localdate()
         )
 
     def test_task_complete(self):

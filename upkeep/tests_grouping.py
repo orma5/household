@@ -1,9 +1,10 @@
-from django.test import TestCase, Client
-from django.urls import reverse
 from django.contrib.auth import get_user_model
-from .models import Location, Item, Task
+from django.test import Client, TestCase
+from django.urls import reverse
 
 from common.models import Account, Profile
+
+from .models import Item, Location, Task
 
 User = get_user_model()
 

@@ -11,7 +11,7 @@ DJANGO_SETTINGS_MODULE=settings.local-development python manage.py runserver
 # Run tests (Django test runner, not pytest)
 DJANGO_SETTINGS_MODULE=settings.test python manage.py test
 
-# Lint (CI-enforced, zero-config — no pyproject.toml/ruff.toml)
+# Lint (CI-enforced). ruff.toml only excludes */migrations/; rules are ruff's defaults.
 ruff check .
 
 # Dependency vulnerability audit (CI-enforced)
@@ -29,7 +29,7 @@ python manage.py migrate
 
 ## Architecture
 
-Django 5.2 monolith with HTMX (`django-htmx`) for interactivity and server-rendered templates (Bootstrap 5) — no SPA/JS framework, no REST API layer. PostgreSQL via `psycopg`.
+Django 6.1 monolith with HTMX (`django-htmx`) for interactivity and server-rendered templates (Bootstrap 5) — no SPA/JS framework, no REST API layer. PostgreSQL via `psycopg`.
 
 Apps:
 - `core/` — project wiring only: `urls.py` (root URLConf), `asgi.py`/`wsgi.py`. No models or views of its own.
@@ -39,7 +39,9 @@ Apps:
 
 **Multi-tenancy model:** `common.Account` is the tenant boundary. `Profile.account` links a `User` to an `Account`. `upkeep.Location.account` scopes locations to a tenant; `Item` and `Task` cascade down from `Location` (no direct `account`/`user` FK on them — always reach the tenant through `item.location.account`). When writing queries or views, filter through `Location`, not through `request.user` directly.
 
-**Active location pattern:** the app is single-active-location, not multi-select. `upkeep.context_processors.active_location` (registered in `settings/common.py`) runs on every request and injects `active_location`, `user_locations`, and `account` into template context, backed by `request.session["active_location_id"]`. Any view listing/creating `Item`/`Task` data must filter by the active location itself — the context processor does not do this for view logic, only for template globals (nav/selector).
+Resolve the tenant with `common.models.get_account(user)` (it tolerates a missing `Profile`) rather than `request.user.profile.account`, and decorate any view touching tenant data with `upkeep.views.account_required`. `Location.account` is nullable, so an `account=None` filter matches orphaned rows instead of matching nothing — the decorator is what stops an account-less user inheriting them.
+
+**Active location pattern:** the app is single-active-location, not multi-select. `upkeep.context_processors.active_location` (registered in `settings/common.py`) runs on every request and injects `active_location`, `user_locations`, and `account` into template context, backed by `request.session["active_location_id"]`. Any view listing/creating `Item`/`Task` data must filter by the active location itself — the context processor does not do this for view logic, only for template globals (nav/selector). Both the context processor and the views resolve it through `upkeep.selectors.get_active_location(request)`, which validates the session id against the account and repairs a stale one; do not re-implement the fallback inline.
 
 **Models:** new domain models should extend `common.models.BaseModel` unless there's a specific reason not to (it gives audit fields for free).
 
@@ -49,14 +51,15 @@ Split by environment under `settings/`, all importing from `settings/common.py`:
 - `common.py` — shared base config. Don't edit for local-only needs.
 - `local-development.py` — local dev (debug, console logging).
 - `test.py` — in-memory sqlite, `MD5PasswordHasher` (fast, insecure — test-only), locmem email backend. Tests must run with this settings module; `local-development`'s Postgres backend will not work with the test DB assumptions.
-- `stage.py`, `prod.py` — deployed environments.
+- `deployed.py` — shared hardening for the deployed environments (DEBUG off, proxy/TLS, HSTS, JSON logging). Not used directly.
+- `stage.py`, `prod.py` — thin re-exports of `deployed.py`; put genuinely environment-specific overrides here.
 
-Env vars are read from a root `.env` file via `django-environ` (see `settings/common.py`): `SECRET_KEY`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT` (the DB vars have local dev defaults; `SECRET_KEY` does not).
+Env vars are read from a root `.env` file via `django-environ` (see `settings/common.py`): `SECRET_KEY`, `MEDIA_ROOT`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT` (the DB vars have local dev defaults; `SECRET_KEY` does not).
 
 ## Testing
 
 Django's built-in test runner, split into multiple files per app by concern rather than one `tests.py`:
-- `upkeep/tests_models.py`, `tests_views.py`, `tests_tasks.py`, `tests_grouping.py`, `tests_task_form.py`
+- `upkeep/tests_models.py`, `tests_views.py`, `tests_tasks.py`, `tests_grouping.py`, `tests_task_form.py`, `tests_tenancy.py`, `tests_active_location.py`
 - `common/tests_profiles.py`
 
 When adding tests for a new concern, prefer a new `tests_<concern>.py` file over growing an existing one, matching this pattern.

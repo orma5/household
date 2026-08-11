@@ -1,19 +1,43 @@
-from collections import defaultdict
-from django.db.models import Q
-from django.utils import timezone
-from django.db.models.functions import Coalesce, Greatest
-from .models import Task, Item, Location
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, render, redirect
-from django.urls import reverse
-from django.contrib import messages
-from django_htmx.http import HttpResponseClientRedirect
-from django.views.decorators.http import require_POST
-from django.utils.http import url_has_allowed_host_and_scheme
-from .forms import ItemForm, LocationForm, TaskForm
-from common.forms import ProfileForm
-from common.models import Profile
 import datetime
+from collections import defaultdict
+from functools import wraps
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from django.db.models.functions import Coalesce, Greatest
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
+from django_htmx.http import HttpResponseClientRedirect
+
+from common.forms import ProfileForm
+from common.models import Profile, get_account
+
+from .forms import ItemForm, LocationForm, TaskForm
+from .models import Item, Location, Task
+from .selectors import get_active_location
+
+
+def account_required(view):
+    """Require the user to belong to an Account before touching tenant data.
+
+    Location.account is nullable, so an `account=None` filter matches orphaned
+    rows instead of matching nothing — a user without a household would
+    otherwise both see and be able to mutate any account-less location and its
+    items. Send them to settings to create a household instead.
+    """
+
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if not get_account(request.user):
+            messages.error(request, "Create a household before managing your home.")
+            return redirect("settings-view")
+        return view(request, *args, **kwargs)
+
+    return wrapper
 
 
 def _safe_next_url(request, fallback_url_name):
@@ -24,6 +48,15 @@ def _safe_next_url(request, fallback_url_name):
     ):
         return next_url
     return reverse(fallback_url_name)
+
+
+def _scope_item_choices(form, request, account):
+    """Limit a TaskForm's item dropdown to the account's items in the active location."""
+    items = Item.objects.filter(location__account=account)
+    active_location = get_active_location(request)
+    if active_location:
+        items = items.filter(location=active_location)
+    form.fields["item"].queryset = items
 
 
 @login_required
@@ -112,9 +145,10 @@ def settings_view(request):
 
 
 @login_required
+@account_required
 @require_POST
 def location_delete(request, pk):
-    location = get_object_or_404(Location, pk=pk, account=request.user.profile.account)
+    location = get_object_or_404(Location, pk=pk, account=get_account(request.user))
 
     if location.default:
         messages.error(request, "The default location cannot be deleted.")
@@ -126,8 +160,9 @@ def location_delete(request, pk):
 
 
 @login_required
+@account_required
 def switch_location(request, pk):
-    location = get_object_or_404(Location, pk=pk, account=request.user.profile.account)
+    location = get_object_or_404(Location, pk=pk, account=get_account(request.user))
     request.session["active_location_id"] = location.id
     messages.success(request, f"Switched to location: {location.name}")
 
@@ -136,12 +171,13 @@ def switch_location(request, pk):
 
 
 @login_required
+@account_required
 def location_create(request):
     if request.method == "POST":
         form = LocationForm(request.POST)
         if form.is_valid():
             location = form.save(commit=False)
-            location.account = request.user.profile.account
+            location.account = get_account(request.user)
             location.default = False  # just to be explicit
             location.save()
             messages.success(request, f"Location '{location.name}' created.")
@@ -154,8 +190,9 @@ def location_create(request):
 
 
 @login_required
+@account_required
 def location_update(request, pk):
-    location = get_object_or_404(Location, pk=pk, account=request.user.profile.account)
+    location = get_object_or_404(Location, pk=pk, account=get_account(request.user))
 
     if request.method == "POST":
         form = LocationForm(request.POST, instance=location)
@@ -171,8 +208,9 @@ def location_update(request, pk):
 
 
 @login_required
+@account_required
 def item_archive(request, pk):
-    item = get_object_or_404(Item, pk=pk, location__account=request.user.profile.account)
+    item = get_object_or_404(Item, pk=pk, location__account=get_account(request.user))
     if request.method == "POST":
         item.status = Item.ItemStatus.RETIRED
         item.save()
@@ -181,8 +219,9 @@ def item_archive(request, pk):
 
 
 @login_required
+@account_required
 def item_update(request, pk):
-    account = request.user.profile.account
+    account = get_account(request.user)
     item = get_object_or_404(Item, pk=pk, location__account=account)
 
     if request.method == "POST":
@@ -195,14 +234,15 @@ def item_update(request, pk):
         form = ItemForm(instance=item, account=account)
 
     return render(
-        request, "components/item_detail_modal.html", {"item": item, "form": form}
+        request, "components/_item_detail_modal.html", {"item": item, "form": form}
     )
 
 
 @login_required
+@account_required
 @require_POST
 def item_delete(request, pk):
-    item = get_object_or_404(Item, pk=pk, location__account=request.user.profile.account)
+    item = get_object_or_404(Item, pk=pk, location__account=get_account(request.user))
 
     item_name = item.name
     item.delete()
@@ -211,8 +251,9 @@ def item_delete(request, pk):
 
 
 @login_required
+@account_required
 def item_create(request):
-    account = request.user.profile.account
+    account = get_account(request.user)
     if request.method == "POST":
         form = ItemForm(request.POST, request.FILES, account=account)
         if form.is_valid():
@@ -233,26 +274,16 @@ def item_create(request):
 
 
 @login_required
+@account_required
 def item_list(request):
     query = request.GET.get("q", "")
-    account = request.user.profile.account
+    account = get_account(request.user)
 
     items = Item.objects.filter(location__account=account).select_related("location")
 
-    # Filter by active location
-    active_location_id = request.session.get("active_location_id")
-    if active_location_id:
-        items = items.filter(location_id=active_location_id)
-    else:
-        # Fallback: pick default
-        default_loc = (
-            Location.objects.filter(account=account)
-            .order_by("-default", "name")
-            .first()
-        )
-        if default_loc:
-            items = items.filter(location=default_loc)
-            request.session["active_location_id"] = default_loc.id
+    active_location = get_active_location(request)
+    if active_location:
+        items = items.filter(location=active_location)
 
     if query:
         items = items.filter(
@@ -263,17 +294,20 @@ def item_list(request):
 
     items = items.order_by("area", "name")
 
+    # Each item renders its own edit form, and every one of those repeats the
+    # same location <select>. ModelChoiceIterator re-runs the queryset on each
+    # render, so resolve the choices once and share them instead of paying a
+    # query per item.
+    form = ItemForm(account=account)
+    location_choices = list(form.fields["location"].choices)
+    form.fields["location"].choices = location_choices
     for item in items:
         item.form = ItemForm(instance=item, account=account)
-
-    # No longer grouping by location.
-    # We can group by Area if desired, or just pass flat list.
-    # The template expects 'grouped_items', so let's adjust the template or adapter here.
-    # Let's pass 'items' directly and update the template to iterate over items.
+        item.form.fields["location"].choices = location_choices
 
     context = {
         "items": items,
-        "form": ItemForm(account=account),
+        "form": form,
     }
 
     if request.htmx:
@@ -284,6 +318,7 @@ def item_list(request):
 
 
 @login_required
+@account_required
 def task_management_list(request):
     """
     Master list of all maintenance tasks, grouped by:
@@ -293,26 +328,16 @@ def task_management_list(request):
     """
     query = request.GET.get("q", "")
     group_by = request.GET.get("group_by", "item")
-    account = request.user.profile.account
+    account = get_account(request.user)
 
     # Base query: Get all tasks for the user
     tasks = Task.objects.filter(item__location__account=account).select_related(
         "item", "item__location"
     )
 
-    # Filter by active location
-    active_location_id = request.session.get("active_location_id")
-    if active_location_id:
-        tasks = tasks.filter(item__location_id=active_location_id)
-    else:
-        default_loc = (
-            Location.objects.filter(account=account)
-            .order_by("-default", "name")
-            .first()
-        )
-        if default_loc:
-            tasks = tasks.filter(item__location=default_loc)
-            request.session["active_location_id"] = default_loc.id
+    active_location = get_active_location(request)
+    if active_location:
+        tasks = tasks.filter(item__location=active_location)
 
     if query:
         tasks = tasks.filter(
@@ -358,22 +383,16 @@ def task_management_list(request):
 
         context["grouped_tasks"] = dict(grouped_tasks)
 
-    if request.htmx:
-        # If it's an HTMX request, we can still return the full template
-        # and let HTMX use hx-select if specified, or just return the full thing
-        # and HTMX will swap the whole #task-list-container content.
-        # However, to avoid returning the whole base.html wrapper, we can check for HTMX.
-        pass
-
     return render(request, "maintenance_list.html", context)
 
 
 @login_required
+@account_required
 def task_create(request):
     """
     Creates a new task. Can be triggered from Maintenance page or Item Details.
     """
-    account = request.user.profile.account
+    account = get_account(request.user)
     if request.method == "POST":
         form = TaskForm(request.POST, account=account)
         if form.is_valid():
@@ -393,9 +412,6 @@ def task_create(request):
             if request.htmx:
                 return HttpResponseClientRedirect(reverse("task-management-list"))
             return redirect("task-management-list")
-        else:
-            # If HTMX, we should return the form with errors
-            pass
     else:
         initial_data = {}
         item_id = request.GET.get("item")
@@ -404,19 +420,15 @@ def task_create(request):
             initial_data["item"] = item
 
         form = TaskForm(initial=initial_data, account=account)
-        # Filter the 'item' dropdown to only show Account's items in active location
-        items_qs = Item.objects.filter(location__account=account)
-        active_location_id = request.session.get("active_location_id")
-        if active_location_id:
-            items_qs = items_qs.filter(location_id=active_location_id)
-        form.fields["item"].queryset = items_qs
+        _scope_item_choices(form, request, account)
 
     return render(request, "components/_task_create_modal.html", {"form": form})
 
 
 @login_required
+@account_required
 def task_update(request, pk):
-    account = request.user.profile.account
+    account = get_account(request.user)
     task = get_object_or_404(Task, pk=pk, item__location__account=account)
 
     if request.method == "POST":
@@ -435,11 +447,7 @@ def task_update(request, pk):
             return redirect("task-management-list")
     else:
         form = TaskForm(instance=task, account=account)
-        items_qs = Item.objects.filter(location__account=account)
-        active_location_id = request.session.get("active_location_id")
-        if active_location_id:
-            items_qs = items_qs.filter(location_id=active_location_id)
-        form.fields["item"].queryset = items_qs
+        _scope_item_choices(form, request, account)
 
     return render(
         request, "components/_task_create_modal.html", {"form": form, "task": task}
@@ -447,8 +455,9 @@ def task_update(request, pk):
 
 
 @login_required
+@account_required
 def task_delete(request, pk):
-    task = get_object_or_404(Task, pk=pk, item__location__account=request.user.profile.account)
+    task = get_object_or_404(Task, pk=pk, item__location__account=get_account(request.user))
 
     if request.method == "POST":
         task_name = task.name
@@ -461,8 +470,9 @@ def task_delete(request, pk):
 
 
 @login_required
+@account_required
 def task_complete(request, pk):
-    task = get_object_or_404(Task, pk=pk, item__location__account=request.user.profile.account)
+    task = get_object_or_404(Task, pk=pk, item__location__account=get_account(request.user))
     if request.method == "POST":
         task.last_performed = timezone.now().date()
         # Force recalculation of next due date
@@ -487,8 +497,9 @@ def task_complete(request, pk):
 
 
 @login_required
+@account_required
 def task_snooze(request, pk):
-    task = get_object_or_404(Task, pk=pk, item__location__account=request.user.profile.account)
+    task = get_object_or_404(Task, pk=pk, item__location__account=get_account(request.user))
     if request.method == "POST":
         # Snooze for exactly 7 days from today
         task.snoozed_until = timezone.now().date() + datetime.timedelta(days=7)
@@ -502,6 +513,7 @@ def task_snooze(request, pk):
 
 
 @login_required
+@account_required
 def task_due_list(request):
     """
     Shows only tasks that are due today or overdue, considering snoozes.
@@ -509,7 +521,7 @@ def task_due_list(request):
     """
 
     today = timezone.now().date()
-    account = request.user.profile.account
+    account = get_account(request.user)
 
     # Task is due if:
 
@@ -535,28 +547,9 @@ def task_due_list(request):
         .order_by("-effective_due_date", "name")
     )
 
-    # Filter by active location
-
-    active_location_id = request.session.get("active_location_id")
-
-    if active_location_id:
-        tasks = tasks.filter(item__location_id=active_location_id)
-
-    else:
-        # Standard fallback if needed, or show all?
-
-        # Existing pattern uses default location if none selected.
-
-        default_loc = (
-            Location.objects.filter(account=account)
-            .order_by("-default", "name")
-            .first()
-        )
-
-        if default_loc:
-            tasks = tasks.filter(item__location=default_loc)
-
-            request.session["active_location_id"] = default_loc.id
+    active_location = get_active_location(request)
+    if active_location:
+        tasks = tasks.filter(item__location=active_location)
 
     context = {"tasks": tasks, "today": today}
 

@@ -1,7 +1,20 @@
 import datetime
-from django.db import models
-from common.models import BaseModel
+
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+from django.utils import timezone
+
+from common.models import BaseModel
+
+
+def max_purchase_year():
+    """Upper bound for Item.purchase_year.
+
+    Passed to MaxValueValidator as a callable so the limit is resolved per
+    validation rather than at import time — a literal would go stale each new
+    year and make makemigrations emit a spurious AlterField.
+    """
+    return timezone.localdate().year + 1
 
 
 class Location(BaseModel):
@@ -53,7 +66,7 @@ class Item(BaseModel):
         blank=True,
         validators=[
             MinValueValidator(1900),
-            MaxValueValidator(datetime.datetime.now().year + 1),
+            MaxValueValidator(max_purchase_year),
         ],
     )
     warranty_expiration = models.DateField(blank=True, null=True)
@@ -70,7 +83,7 @@ class Item(BaseModel):
         return self.name
 
     def is_under_warranty(self):
-        return self.warranty_expiration and self.warranty_expiration >= datetime.date.today()
+        return self.warranty_expiration and self.warranty_expiration >= timezone.localdate()
 
     def get_status_badge_class(self):
         return {
@@ -112,26 +125,24 @@ class Task(BaseModel):
 
     @property
     def days_overdue(self):
-        from django.utils import timezone
-        
         # Determine the effective due date: use snoozed_until if it's later than next_due_date
         effective_due_date = self.next_due_date
-        if self.snoozed_until:
-            if not effective_due_date or self.snoozed_until > effective_due_date:
-                effective_due_date = self.snoozed_until
-        
+        if self.snoozed_until and (
+            not effective_due_date or self.snoozed_until > effective_due_date
+        ):
+            effective_due_date = self.snoozed_until
+
         if not effective_due_date:
             return 0
-            
-        today = timezone.now().date()
-        delta = today - effective_due_date
+
+        delta = timezone.localdate() - effective_due_date
         return delta.days
 
     def calculate_next_due_date(self):
         if self.last_performed and self.frequency:
             return self.last_performed + datetime.timedelta(days=self.frequency)
         if not self.last_performed:
-            return datetime.date.today()
+            return timezone.localdate()
 
     def save(self, *args, **kwargs):
         if not self.next_due_date:
