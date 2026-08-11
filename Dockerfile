@@ -21,23 +21,30 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy the current directory contents into the container at /app
 COPY . /app/
 
-# Static files never change after the image is built, so collect them once here
-# instead of on every container start. SECRET_KEY is only needed to import the
-# settings module; the real one is supplied by the environment at runtime.
-RUN SECRET_KEY=build-time-only python manage.py collectstatic --noinput
-
-# Drop root. /app/media holds user uploads and must be a mounted volume to
-# survive a redeploy; /app/logs is written at runtime. Both need to be writable
-# by the unprivileged user.
+# Drop root. STATIC_ROOT (/app/assets) is a named volume shared with the Caddy
+# container, /app/media holds user uploads, and /app/logs is written at runtime,
+# so all three must be writable by the unprivileged user.
+#
+# collectstatic also runs here, not just at startup: Docker seeds an *empty*
+# named volume from the image, copying both the contents and this ownership. So
+# a freshly created volume comes out appuser-owned and needs no host setup. A
+# volume that already has content keeps whatever ownership it already had, and
+# must be handed over once on the host:
+#   docker run --rm -v household_static:/v alpine chown -R 10001:10001 /v
 RUN useradd --create-home --uid 10001 appuser && \
+    SECRET_KEY=build-time-only python manage.py collectstatic --noinput && \
     mkdir -p /app/logs /app/media && \
     chmod 750 /app/logs && \
-    chown -R appuser:appuser /app/logs /app/media
+    chown -R appuser:appuser /app/assets /app/logs /app/media
 
 USER appuser
 
 # Expose the port that the application will run on
 EXPOSE 8000
 
-# Command to run the application
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1", "--timeout", "300"]
+# collectstatic has to run on every start, not only at build: /app/assets is a
+# named volume mounted over the image's copy, so the build-time output is
+# invisible unless that volume happened to be empty. Caddy serves the volume,
+# so this is what makes a static change actually reach the browser.
+# `exec` hands PID 1 to gunicorn so it receives SIGTERM on shutdown.
+CMD ["sh", "-c", "python manage.py collectstatic --noinput && exec gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 1 --timeout 300"]
