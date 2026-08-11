@@ -8,10 +8,22 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.contrib import messages
 from django_htmx.http import HttpResponseClientRedirect
+from django.views.decorators.http import require_POST
+from django.utils.http import url_has_allowed_host_and_scheme
 from .forms import ItemForm, LocationForm, TaskForm
 from common.forms import ProfileForm
 from common.models import Profile
 import datetime
+
+
+def _safe_next_url(request, fallback_url_name):
+    """Validate HTTP_REFERER as a redirect target to avoid an open redirect."""
+    next_url = request.META.get("HTTP_REFERER")
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return next_url
+    return reverse(fallback_url_name)
 
 
 @login_required
@@ -47,20 +59,31 @@ def settings_view(request):
                 messages.success(request, f"Household '{household_name}' created.")
                 return redirect("settings-view")
         elif "add_member" in request.POST and account:
+            if account.owner_id != user.id:
+                messages.error(request, "Only the household owner can add members.")
+                return redirect("settings-view")
+
             username = request.POST.get("new_username")
             password = request.POST.get("new_password")
             email = request.POST.get("new_email", "")
-            
+
             from django.contrib.auth import get_user_model
+            from django.contrib.auth.password_validation import validate_password
+            from django.core.exceptions import ValidationError
             User = get_user_model()
-            
+
             if User.objects.filter(username=username).exists():
                 messages.error(request, f"Username '{username}' already exists.")
             else:
-                new_user = User.objects.create_user(username=username, email=email, password=password)
-                Profile.objects.create(user=new_user, account=account)
-                messages.success(request, f"Member '{username}' added to the household.")
-                return redirect("settings-view")
+                try:
+                    validate_password(password)
+                except ValidationError as e:
+                    messages.error(request, " ".join(e.messages))
+                else:
+                    new_user = User.objects.create_user(username=username, email=email, password=password)
+                    Profile.objects.create(user=new_user, account=account)
+                    messages.success(request, f"Member '{username}' added to the household.")
+                    return redirect("settings-view")
     
     profile_form = ProfileForm(instance=profile)
 
@@ -89,6 +112,7 @@ def settings_view(request):
 
 
 @login_required
+@require_POST
 def location_delete(request, pk):
     location = get_object_or_404(Location, pk=pk, account=request.user.profile.account)
 
@@ -96,12 +120,9 @@ def location_delete(request, pk):
         messages.error(request, "The default location cannot be deleted.")
         return redirect("settings-view")
 
-    if request.method == "POST":
-        location.delete()
-        messages.success(
-            request, f"Location '{location.name}' was deleted successfully."
-        )
-        return redirect("settings-view")
+    location.delete()
+    messages.success(request, f"Location '{location.name}' was deleted successfully.")
+    return redirect("settings-view")
 
 
 @login_required
@@ -110,9 +131,8 @@ def switch_location(request, pk):
     request.session["active_location_id"] = location.id
     messages.success(request, f"Switched to location: {location.name}")
 
-    # Redirect to where the user came from, or default to home/item-list
-    next_url = request.META.get("HTTP_REFERER", "item-list")
-    return redirect(next_url)
+    # Redirect to where the user came from, or default to item-list
+    return redirect(_safe_next_url(request, "item-list"))
 
 
 @login_required
@@ -125,10 +145,12 @@ def location_create(request):
             location.default = False  # just to be explicit
             location.save()
             messages.success(request, f"Location '{location.name}' created.")
-            return redirect("settings-view")
-    else:
-        form = LocationForm()
-    return render(request, "location_form.html", {"form": form})
+        else:
+            messages.error(
+                request,
+                "There was a problem creating the location. Please check the form for errors.",
+            )
+    return redirect("settings-view")
 
 
 @login_required
@@ -140,11 +162,12 @@ def location_update(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, f"Location '{location.name}' updated.")
-            return redirect("settings-view")
-    else:
-        form = LocationForm(instance=location)
-
-    return render(request, "location_form.html", {"form": form})
+        else:
+            messages.error(
+                request,
+                "There was a problem updating the location. Please check the form for errors.",
+            )
+    return redirect("settings-view")
 
 
 @login_required
@@ -177,14 +200,14 @@ def item_update(request, pk):
 
 
 @login_required
+@require_POST
 def item_delete(request, pk):
     item = get_object_or_404(Item, pk=pk, location__account=request.user.profile.account)
 
-    if request.method == "POST":
-        item_name = item.name
-        item.delete()
-        messages.success(request, f"Item '{item_name}' was deleted successfully.")
-        return redirect("item-list")
+    item_name = item.name
+    item.delete()
+    messages.success(request, f"Item '{item_name}' was deleted successfully.")
+    return redirect("item-list")
 
 
 @login_required
@@ -201,21 +224,12 @@ def item_create(request):
                 request,
                 f"Item: {item.name} in location: {item.location.name} created successfully.",
             )
-            return redirect("item-list")
         else:
             messages.error(
                 request,
                 "There was a problem creating the item. Please check the form for errors.",
             )
-    else:
-        initial_data = {}
-        active_location_id = request.session.get("active_location_id")
-        if active_location_id:
-            initial_data["location"] = active_location_id
-        form = ItemForm(initial=initial_data, account=account)
-
-    # Optional: this view can render a standalone page or return a partial if needed
-    return render(request, "inventory/item_create.html", {"form": form})
+    return redirect("item-list")
 
 
 @login_required
@@ -460,7 +474,7 @@ def task_complete(request, pk):
         messages.success(request, f"Task '{task.name}' marked as completed.")
 
         # Redirect to where the user came from
-        next_url = request.META.get("HTTP_REFERER") or reverse("task-due-list")
+        next_url = _safe_next_url(request, "task-due-list")
 
         if request.htmx:
             return HttpResponseClientRedirect(next_url)
@@ -543,10 +557,6 @@ def task_due_list(request):
             tasks = tasks.filter(item__location=default_loc)
 
             request.session["active_location_id"] = default_loc.id
-
-    context = {"tasks": tasks, "today": today}
-
-    return render(request, "task_due_list.html", context)
 
     context = {"tasks": tasks, "today": today}
 

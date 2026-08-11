@@ -113,8 +113,6 @@ class TaskForm(forms.ModelForm):
             "frequency",
             "estimated_hours_to_complete",
             "next_due_date",
-            "snoozed_until",
-            "snooze_count",
         ]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
@@ -132,12 +130,6 @@ class TaskForm(forms.ModelForm):
             ),
             "next_due_date": forms.DateInput(
                 attrs={"type": "date", "class": "form-control"}
-            ),
-            "snoozed_until": forms.DateInput(
-                attrs={"type": "date", "class": "form-control"}
-            ),
-            "snooze_count": forms.NumberInput(
-                attrs={"class": "form-control", "min": 0}
             ),
         }
         help_texts = {

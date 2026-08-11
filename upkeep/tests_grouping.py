@@ -15,11 +15,11 @@ class TaskGroupingTests(TestCase):
         self.client = Client()
         self.client.login(username='groupuser', password='password')
         
-        self.location = Location.objects.create(name="Home", user=self.user, account=self.account, default=True)
-        
-        self.item1 = Item.objects.create(name="Kitchen Fridge", location=self.location, user=self.user, account=self.account, area="Kitchen")
-        self.item2 = Item.objects.create(name="Living Room AC", location=self.location, user=self.user, account=self.account, area="Living Room")
-        self.item3 = Item.objects.create(name="Generic Item", location=self.location, user=self.user, account=self.account) # No area
+        self.location = Location.objects.create(name="Home", account=self.account, default=True)
+
+        self.item1 = Item.objects.create(name="Kitchen Fridge", location=self.location, area="Kitchen")
+        self.item2 = Item.objects.create(name="Living Room AC", location=self.location, area="Living Room")
+        self.item3 = Item.objects.create(name="Generic Item", location=self.location) # No area
         
         Task.objects.create(name="Clean Coils", item=self.item1, frequency=Task.Frequency.YEARLY)
         Task.objects.create(name="Change Filter", item=self.item2, frequency=Task.Frequency.QUARTERLY)

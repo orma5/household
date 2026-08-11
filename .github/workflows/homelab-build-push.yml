@@ -23,6 +23,13 @@ jobs:
         run: |
           ruff check .
 
+      - name: Run tests
+        env:
+          SECRET_KEY: ci-test-secret-key
+          DJANGO_SETTINGS_MODULE: settings.test
+        run: |
+          python manage.py test
+
       - name: Dependency check with pip-audit
         run: |
           pip-audit

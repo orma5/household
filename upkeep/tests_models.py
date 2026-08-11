@@ -16,7 +16,6 @@ class UpkeepModelTests(TestCase):
     def test_location_creation(self):
         location = Location.objects.create(
             name="Garden",
-            user=self.user,
             account=self.account,
             default=True
         )
@@ -24,12 +23,10 @@ class UpkeepModelTests(TestCase):
         self.assertTrue(location.default)
 
     def test_item_creation(self):
-        location = Location.objects.create(name="Garage", user=self.user, account=self.account)
+        location = Location.objects.create(name="Garage", account=self.account)
         item = Item.objects.create(
             name="Lawn Mower",
             location=location,
-            user=self.user,
-            account=self.account,
             status=Item.ItemStatus.ACTIVE
         )
         self.assertEqual(str(item), "Lawn Mower")
@@ -37,22 +34,18 @@ class UpkeepModelTests(TestCase):
         self.assertEqual(item.get_status_badge_class(), "status-active")
 
     def test_item_warranty(self):
-        location = Location.objects.create(name="Kitchen", user=self.user, account=self.account)
+        location = Location.objects.create(name="Kitchen", account=self.account)
         future_date = datetime.date.today() + datetime.timedelta(days=365)
         past_date = datetime.date.today() - datetime.timedelta(days=1)
-        
+
         item_ok = Item.objects.create(
             name="Fridge",
             location=location,
-            user=self.user,
-            account=self.account,
             warranty_expiration=future_date
         )
         item_expired = Item.objects.create(
             name="Old Toaster",
             location=location,
-            user=self.user,
-            account=self.account,
             warranty_expiration=past_date
         )
         

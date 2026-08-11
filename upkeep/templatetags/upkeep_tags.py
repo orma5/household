@@ -1,5 +1,6 @@
 import markdown as md
 from django import template
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
 register = template.Library()
@@ -11,7 +12,8 @@ def markdownify(value):
     """
     if not value:
         return ""
-    
-    # We can add extensions here later if needed (e.g., 'extra', 'toc')
-    html = md.markdown(value, extensions=['extra', 'sane_lists'])
+
+    # Escape first so literal HTML in the source (e.g. <script>) can't survive
+    # markdown's raw-HTML passthrough and execute in the browser.
+    html = md.markdown(escape(value), extensions=['extra', 'sane_lists'])
     return mark_safe(html)

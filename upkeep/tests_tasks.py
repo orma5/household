@@ -19,16 +19,13 @@ class TaskManagementTests(TestCase):
         
         self.location = Location.objects.create(
             name="Test Location",
-            user=self.user,
             account=self.account,
             default=True
         )
-        
+
         self.item = Item.objects.create(
             name="Test Item",
             location=self.location,
-            user=self.user,
-            account=self.account,
             quantity=1,
             status=Item.ItemStatus.ACTIVE
         )

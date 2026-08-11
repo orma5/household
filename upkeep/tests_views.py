@@ -17,8 +17,8 @@ class UpkeepViewTests(TestCase):
         self.client = Client()
         self.client.login(username='viewuser', password='password')
         
-        self.location = Location.objects.create(name="Home", user=self.user, account=self.account, default=True)
-        self.item = Item.objects.create(name="Toaster", location=self.location, user=self.user, account=self.account)
+        self.location = Location.objects.create(name="Home", account=self.account, default=True)
+        self.item = Item.objects.create(name="Toaster", location=self.location)
 
     def test_task_due_list_filtering(self):
         # Create one due task and one future task
@@ -42,7 +42,7 @@ class UpkeepViewTests(TestCase):
         self.assertNotContains(response, "Future Task")
 
     def test_location_switching_persists(self):
-        loc2 = Location.objects.create(name="Cabin", user=self.user)
+        loc2 = Location.objects.create(name="Cabin", account=self.account)
         url = reverse('switch-location', args=[loc2.id])
         
         self.client.get(url)

@@ -6,6 +6,15 @@ ALLOWED_HOSTS = ["*"]
 
 CSRF_TRUSTED_ORIGINS = ["https://*.dkms.se"]
 
+# TLS terminates at a reverse proxy in front of this app.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+# Kept short since *.dkms.se is a wildcard shared with other homelab services;
+# raise once HTTPS is confirmed reliable for this app specifically.
+SECURE_HSTS_SECONDS = 3600
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
