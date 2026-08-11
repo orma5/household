@@ -1,14 +1,54 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q, Sum
+from django.http import Http404
 from django.shortcuts import render
 from django.utils import timezone
+from django.views.static import serve
 
 from upkeep.models import Item, Task
 from upkeep.selectors import get_active_location
 
-from .models import get_account
+from .models import Profile, get_account
+
+
+def _may_access_upload(user, path):
+    """Whether `user` is entitled to the upload stored at `path`.
+
+    Uploads are matched back to the row that owns them; anything no row claims
+    is treated as non-existent.
+    """
+    # Your own picture, which you can have before joining a household.
+    if Profile.objects.filter(user=user, profile_picture=path).exists():
+        return True
+
+    account = get_account(user)
+    if not account:
+        # Location.account and Profile.account are both nullable, so filtering
+        # on account=None would match orphaned rows rather than nothing.
+        return False
+
+    return (
+        Item.objects.filter(receipt_file=path, location__account=account).exists()
+        or Profile.objects.filter(profile_picture=path, account=account).exists()
+    )
+
+
+@login_required
+def serve_upload(request, path):
+    """Serve a user upload, scoped to the account that owns it.
+
+    Authentication alone is not enough here: Django only appends a random
+    suffix to an uploaded filename when it collides, so `receipts/receipt.pdf`
+    is guessable and any logged-in user of any household could fetch it.
+
+    404 rather than 403 on refusal, so this does not confirm which paths exist.
+    """
+    if not _may_access_upload(request.user, path):
+        raise Http404("No such file")
+    return serve(request, path, document_root=settings.MEDIA_ROOT)
 
 
 @login_required
