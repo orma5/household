@@ -9,3 +9,6 @@ db.sqlite3
 *.code-workspace
 .plan
 .aider*
+
+# collectstatic output (STATIC_ROOT)
+/assets/
