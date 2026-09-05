@@ -1,5 +1,12 @@
 name: Homelab build and push
+
 on: [push]
+
+# The homelab registry is the only image source. The image name comes from the
+# DOCKERHUB_REPO secret for historical reasons; it resolves to
+# registry.home.dkms.se/master/household - what the NUC already pulls.
+env:
+  IMAGE: ${{ secrets.REGISTRY_HOST }}/${{ secrets.REGISTRY_USER }}/${{ secrets.DOCKERHUB_REPO }}
 
 jobs:
   code-checks:
@@ -33,12 +40,11 @@ jobs:
       - name: Dependency check with pip-audit
         run: |
           pip-audit
-  
+
   build:
     runs-on: ubuntu-latest
     needs: code-checks
     steps:
-      # 1. Login to YOUR Homelab Registry
       - name: Login to Homelab Registry
         uses: docker/login-action@v4
         with:
@@ -46,19 +52,68 @@ jobs:
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
+      # arm64 emulation, for the k3s cluster (Raspberry Pi 5).
       - name: Set up QEMU (arm64 emulation)
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      # 2. Build and push a multi-arch image: amd64 (x86 tier) + arm64 (Pi/k3s tier).
-      #    Immutable tag = commit SHA (the CD contract). :latest kept during transition.
+      - name: Set image tag
+        id: vars
+        run: echo "COMMIT_TAG=$IMAGE:gh-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      # Immutable per-commit tag only. The floating tags used to be published
+      # here, from every branch; they are now published by the promotion jobs
+      # below and only from main, after the gates have passed.
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ secrets.REGISTRY_HOST }}/${{ secrets.REGISTRY_USER }}/${{ secrets.DOCKERHUB_REPO }}:${{ github.sha }}
-            ${{ secrets.REGISTRY_HOST }}/${{ secrets.REGISTRY_USER }}/${{ secrets.DOCKERHUB_REPO }}:latest
+          tags: ${{ steps.vars.outputs.COMMIT_TAG }}
+
+  # :candidate is what the k3s Deployment pulls.
+  retag-and-push-candidate:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Login to Homelab Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ secrets.REGISTRY_HOST }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      # imagetools copies the manifest list itself rather than a resolved
+      # image, so :candidate stays multi-arch. A docker pull/tag/push would
+      # flatten it to the runner's amd64 and the Pis could not run it.
+      - name: Promote commit tag to :candidate
+        run: |
+          docker buildx imagetools create \
+            --tag "$IMAGE:candidate" \
+            "$IMAGE:gh-${GITHUB_SHA::7}"
+
+  # :latest is what the NUC's compose still pulls, so it must keep moving until
+  # household is cut over to the cluster and removed from application.yml.
+  promote-latest:
+    runs-on: ubuntu-latest
+    needs: retag-and-push-candidate
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Login to Homelab Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ secrets.REGISTRY_HOST }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      # imagetools again, so :latest stays multi-arch.
+      - name: Promote commit tag to :latest
+        run: |
+          docker buildx imagetools create \
+            --tag "$IMAGE:latest" \
+            "$IMAGE:gh-${GITHUB_SHA::7}"

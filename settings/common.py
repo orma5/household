@@ -28,6 +28,13 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Must sit directly after SecurityMiddleware. Serves STATIC_ROOT from inside
+    # the app so no static volume has to be shared with a proxy - which is what
+    # makes running on the k3s cluster possible, since the NUC's Caddy cannot
+    # mount a volume from another host. Uploads are NOT served by WhiteNoise:
+    # they stay behind serve_upload in core/urls.py so receipts remain scoped to
+    # the account that owns them.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -104,6 +111,18 @@ STATIC_ROOT = os.path.join(BASE_DIR, "assets")
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
+
+# CompressedStaticFilesStorage, not the Manifest variant: the manifest one raises
+# at render time on any {% static %} reference it cannot find, which would turn a
+# missing asset into a 500 instead of a 404.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
 
 # User uploads (Item.receipt_file, Profile.profile_picture). Defined here rather
 # than per-environment: without it the deployed environments fall back to
