@@ -70,7 +70,11 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           push: true
-          platforms: linux/amd64,linux/arm64
+          # arm64 only: every cluster node is arm64 and this image runs
+          # nowhere else, so the amd64 variant was registry storage that
+          # garbage collection can never reclaim - a live tag keeps
+          # referencing it.
+          platforms: linux/arm64
           tags: ${{ steps.vars.outputs.COMMIT_TAG }}
 
   # :candidate is what the k3s Deployment pulls.
